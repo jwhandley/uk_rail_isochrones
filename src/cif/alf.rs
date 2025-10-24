@@ -7,11 +7,11 @@ use std::{
     str::FromStr,
 };
 
-pub struct ALF {
+pub struct Alf {
     pub links: Vec<Link>,
 }
 
-impl ALF {
+impl Alf {
     pub fn from_reader<R: Read>(reader: R) -> Result<Self> {
         let reader = BufReader::new(reader);
         parse_alf(reader)
@@ -24,7 +24,7 @@ impl ALF {
     }
 }
 
-fn parse_alf<R: BufRead>(reader: R) -> Result<ALF> {
+fn parse_alf<R: BufRead>(reader: R) -> Result<Alf> {
     let mut links = vec![];
     for line in reader.lines() {
         let input = line?;
@@ -32,7 +32,7 @@ fn parse_alf<R: BufRead>(reader: R) -> Result<ALF> {
         links.push(link);
     }
 
-    Ok(ALF { links })
+    Ok(Alf { links })
 }
 
 #[derive(Debug, Default)]

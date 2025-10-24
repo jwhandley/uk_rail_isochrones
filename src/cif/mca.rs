@@ -10,11 +10,11 @@ use chrono::{NaiveDate, NaiveTime};
 
 use crate::cif::{parse_date_ddmmyy, parse_hhmm};
 
-pub struct MCA {
+pub struct Mca {
     pub schedules: Vec<Schedule>,
 }
 
-impl MCA {
+impl Mca {
     pub fn from_reader<R: Read>(r: R) -> Result<Self> {
         let reader = BufReader::new(r);
         parse_mca(reader)
@@ -27,7 +27,7 @@ impl MCA {
     }
 }
 
-fn parse_mca<R: BufRead>(reader: R) -> Result<MCA> {
+fn parse_mca<R: BufRead>(reader: R) -> Result<Mca> {
     let mut schedules = vec![];
 
     let mut parsing_trip = false;
@@ -73,7 +73,7 @@ fn parse_mca<R: BufRead>(reader: R) -> Result<MCA> {
         }
     }
 
-    Ok(MCA { schedules })
+    Ok(Mca { schedules })
 }
 
 fn valid_activities(s: &str) -> bool {

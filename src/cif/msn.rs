@@ -8,13 +8,13 @@ use std::{
 use anyhow::{Context, Result};
 use chrono::{NaiveDate, NaiveTime};
 
-pub struct MSN {
+pub struct Msn {
     pub header: Header,
     pub stations: Vec<StationDefinition>,
     pub aliases: Vec<Alias>,
 }
 
-impl MSN {
+impl Msn {
     /// Parse from any reader (file, in-memory, decompressed stream, zip entry, etc.)
     pub fn from_reader<R: Read>(r: R) -> Result<Self> {
         let reader = BufReader::new(r);
@@ -28,7 +28,7 @@ impl MSN {
     }
 }
 
-fn parse_msn<R: BufRead>(reader: R) -> Result<MSN> {
+fn parse_msn<R: BufRead>(reader: R) -> Result<Msn> {
     let mut header = None;
     let mut stations = Vec::new();
     let mut aliases = Vec::new();
@@ -50,7 +50,7 @@ fn parse_msn<R: BufRead>(reader: R) -> Result<MSN> {
         }
     }
 
-    Ok(MSN {
+    Ok(Msn {
         header: header.context("no header record found")?,
         stations,
         aliases,
@@ -74,7 +74,7 @@ impl FromStr for Header {
             .with_context(|| format!("Invalid version number in {s}"))?;
         let creation_date = NaiveDate::parse_from_str(&s[48..56], "%d/%m/%y")
             .with_context(|| format!("Failed to parse date in {s}"))?;
-        let creation_time = NaiveTime::parse_from_str(&s[57..66].trim(), "%H.%M.%S")
+        let creation_time = NaiveTime::parse_from_str(s[57..66].trim(), "%H.%M.%S")
             .with_context(|| format!("Failed to parse time in {}", &s[57..66]))?;
         let sequence_number: u32 = s[66..71]
             .trim()

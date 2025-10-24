@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use chrono::{NaiveDate, NaiveTime};
 use zip::ZipArchive;
 
-use crate::cif::{alf::ALF, mca::MCA, msn::MSN};
+use crate::cif::{alf::Alf, mca::Mca, msn::Msn};
 pub mod alf;
 pub mod mca;
 pub mod msn;
@@ -24,9 +24,9 @@ pub fn parse_date_ddmmyy(s: &str) -> Result<NaiveDate> {
 }
 
 pub struct CifTimetable {
-    pub detail: MCA,
-    pub stations: MSN,
-    pub links: ALF,
+    pub detail: Mca,
+    pub stations: Msn,
+    pub links: Alf,
 }
 
 impl CifTimetable {
@@ -34,18 +34,18 @@ impl CifTimetable {
         let file = File::open(path)?;
         let mut archive = ZipArchive::new(file)?;
 
-        let mut msn_opt = None::<MSN>;
-        let mut mca_opt = None::<MCA>;
-        let mut alf_opt = None::<ALF>;
+        let mut msn_opt = None::<Msn>;
+        let mut mca_opt = None::<Mca>;
+        let mut alf_opt = None::<Alf>;
 
         for i in 0..archive.len() {
             let file = archive.by_index(i)?;
             if file.name().to_lowercase().ends_with(".msn") {
-                msn_opt = Some(MSN::from_reader(file)?);
+                msn_opt = Some(Msn::from_reader(file)?);
             } else if file.name().to_lowercase().ends_with(".mca") {
-                mca_opt = Some(MCA::from_reader(file)?);
+                mca_opt = Some(Mca::from_reader(file)?);
             } else if file.name().to_lowercase().ends_with(".alf") {
-                alf_opt = Some(ALF::from_reader(file)?);
+                alf_opt = Some(Alf::from_reader(file)?);
             }
         }
 
