@@ -1,10 +1,10 @@
-use std::{fs::File, path::Path};
-
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use chrono::{NaiveDate, NaiveTime};
+use std::{fs::File, path::Path};
 use zip::ZipArchive;
 
 use crate::cif::{alf::Alf, mca::Mca, msn::Msn};
+
 pub mod alf;
 pub mod mca;
 pub mod msn;
@@ -17,9 +17,7 @@ pub fn parse_date_ddmmyy(s: &str) -> Result<NaiveDate> {
     let day: u32 = s[0..2].parse().expect("Invalid day");
     let mon: u32 = s[2..4].parse().expect("Invalid month");
     let yy: i32 = s[4..6].parse().expect("Invalid year");
-
     let year = 2000 + yy;
-
     NaiveDate::from_ymd_opt(year, mon, day).ok_or_else(|| anyhow::anyhow!("invalid ddmmyy {s}"))
 }
 
@@ -34,24 +32,26 @@ impl CifTimetable {
         let file = File::open(path)?;
         let mut archive = ZipArchive::new(file)?;
 
-        let mut msn_opt = None::<Msn>;
-        let mut mca_opt = None::<Mca>;
-        let mut alf_opt = None::<Alf>;
+        let mut msn: Option<Result<Msn>> = None;
+        let mut mca: Option<Result<Mca>> = None;
+        let mut alf: Option<Result<Alf>> = None;
 
         for i in 0..archive.len() {
             let file = archive.by_index(i)?;
-            if file.name().to_lowercase().ends_with(".msn") {
-                msn_opt = Some(Msn::from_reader(file)?);
-            } else if file.name().to_lowercase().ends_with(".mca") {
-                mca_opt = Some(Mca::from_reader(file)?);
-            } else if file.name().to_lowercase().ends_with(".alf") {
-                alf_opt = Some(Alf::from_reader(file)?);
+            let name = file.name().to_ascii_lowercase();
+
+            if name.ends_with(".msn") {
+                msn = Some(Msn::from_reader(file));
+            } else if name.ends_with(".mca") {
+                mca = Some(Mca::from_reader(file));
+            } else if name.ends_with(".alf") {
+                alf = Some(Alf::from_reader(file));
             }
         }
 
-        let msn = msn_opt.context("Failed to load MSN file")?;
-        let mca = mca_opt.context("Failed to load MCA file")?;
-        let alf = alf_opt.context("Failed to load ALF file")?;
+        let msn = msn.transpose()?.context("Missing MSN file")?;
+        let mca = mca.transpose()?.context("Missing MCA file")?;
+        let alf = alf.transpose()?.context("Missing ALF file")?;
 
         Ok(Self { mca, msn, alf })
     }
