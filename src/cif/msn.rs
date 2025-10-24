@@ -10,7 +10,7 @@ use chrono::{NaiveDate, NaiveTime};
 
 pub struct Msn {
     pub header: Header,
-    pub stations: Vec<StationDefinition>,
+    pub stations: Vec<Station>,
     pub aliases: Vec<Alias>,
 }
 
@@ -44,7 +44,7 @@ fn parse_msn<R: BufRead>(reader: R) -> Result<Msn> {
             header = Some(Header::from_str(&line)?);
             parsed_header = true;
         } else if line.starts_with('A') {
-            stations.push(StationDefinition::from_str(&line)?);
+            stations.push(Station::from_str(&line)?);
         } else if line.starts_with('L') {
             aliases.push(Alias::from_str(&line)?);
         }
@@ -90,7 +90,7 @@ impl FromStr for Header {
     }
 }
 
-pub struct StationDefinition {
+pub struct Station {
     pub station_name: String,
     pub interchange_status: u8,
     pub tiploc: String,
@@ -101,7 +101,7 @@ pub struct StationDefinition {
     pub min_change_time: u32,
 }
 
-impl FromStr for StationDefinition {
+impl FromStr for Station {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -127,7 +127,7 @@ impl FromStr for StationDefinition {
             .parse()
             .with_context(|| format!("Invalid change time in {s}"))?;
 
-        Ok(StationDefinition {
+        Ok(Station {
             station_name,
             interchange_status,
             tiploc,

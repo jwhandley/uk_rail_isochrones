@@ -1,30 +1,12 @@
 use anyhow::{Context, Result, bail};
 use chrono::{NaiveDate, NaiveTime};
 use std::{
-    fs::File,
     io::{BufRead, BufReader, Read},
-    path::Path,
     str::FromStr,
 };
 
-pub struct Alf {
-    pub links: Vec<Link>,
-}
-
-impl Alf {
-    pub fn from_reader<R: Read>(reader: R) -> Result<Self> {
-        let reader = BufReader::new(reader);
-        parse_alf(reader)
-    }
-
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
-        parse_alf(reader)
-    }
-}
-
-fn parse_alf<R: BufRead>(reader: R) -> Result<Alf> {
+pub fn parse_alf<R: Read>(reader: R) -> Result<Vec<Link>> {
+    let reader = BufReader::new(reader);
     let mut links = vec![];
     for line in reader.lines() {
         let input = line?;
@@ -32,7 +14,7 @@ fn parse_alf<R: BufRead>(reader: R) -> Result<Alf> {
         links.push(link);
     }
 
-    Ok(Alf { links })
+    Ok(links)
 }
 
 #[derive(Debug, Default)]

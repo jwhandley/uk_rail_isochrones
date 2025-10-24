@@ -1,9 +1,13 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use chrono::{NaiveDate, NaiveTime};
 use std::{fs::File, path::Path};
 use zip::ZipArchive;
 
-use crate::cif::{alf::Alf, mca::Mca, msn::Msn};
+use crate::cif::{
+    alf::{Link, parse_alf},
+    mca::{Schedule, parse_mca},
+    msn::{Msn, Station},
+};
 
 pub mod alf;
 pub mod mca;
@@ -22,9 +26,9 @@ pub fn parse_date_ddmmyy(s: &str) -> Result<NaiveDate> {
 }
 
 pub struct CifTimetable {
-    pub mca: Mca,
-    pub msn: Msn,
-    pub alf: Alf,
+    pub schedules: Vec<Schedule>,
+    pub stations: Vec<Station>,
+    pub links: Vec<Link>,
 }
 
 impl CifTimetable {
@@ -33,8 +37,8 @@ impl CifTimetable {
         let mut archive = ZipArchive::new(file)?;
 
         let mut msn: Option<Result<Msn>> = None;
-        let mut mca: Option<Result<Mca>> = None;
-        let mut alf: Option<Result<Alf>> = None;
+        let mut schedules: Option<Result<Vec<Schedule>>> = None;
+        let mut links: Option<Result<Vec<Link>>> = None;
 
         for i in 0..archive.len() {
             let file = archive.by_index(i)?;
@@ -43,16 +47,20 @@ impl CifTimetable {
             if name.ends_with(".msn") {
                 msn = Some(Msn::from_reader(file));
             } else if name.ends_with(".mca") {
-                mca = Some(Mca::from_reader(file));
+                schedules = Some(parse_mca(file));
             } else if name.ends_with(".alf") {
-                alf = Some(Alf::from_reader(file));
+                links = Some(parse_alf(file));
             }
         }
 
         let msn = msn.transpose()?.context("Missing MSN file")?;
-        let mca = mca.transpose()?.context("Missing MCA file")?;
-        let alf = alf.transpose()?.context("Missing ALF file")?;
+        let schedules = schedules.transpose()?.context("Missing MCA file")?;
+        let alf = links.transpose()?.context("Missing ALF file")?;
 
-        Ok(Self { mca, msn, alf })
+        Ok(Self {
+            schedules,
+            stations: msn.stations,
+            links: alf,
+        })
     }
 }

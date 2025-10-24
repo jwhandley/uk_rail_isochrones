@@ -1,4 +1,6 @@
 mod cif;
+use std::collections::{HashMap, HashSet};
+
 use crate::cif::CifTimetable;
 
 fn main() -> anyhow::Result<()> {
@@ -7,19 +9,25 @@ fn main() -> anyhow::Result<()> {
     let timetable = CifTimetable::read("../timetable-2025-10-24.zip")?;
     println!("Done in {:?}", now.elapsed());
 
-    let msn = timetable.msn;
-    println!("Header: {:?}", msn.header);
-    println!(
-        "Read {} stations and {} aliases",
-        msn.stations.len(),
-        msn.aliases.len()
-    );
+    let stations = timetable.stations;
+    println!("Read {} stations", stations.len());
 
-    let alf = timetable.alf;
-    println!("Read {} links", alf.links.len());
+    let links = timetable.links;
+    println!("Read {} links", links.len());
 
-    let mca = timetable.mca;
-    println!("Read {} schedules from timetable", mca.schedules.len());
+    let schedules = &timetable.schedules;
+    println!("Read {} schedules", schedules.len());
+
+    let mut stop_to_schedules: HashMap<String, HashSet<String>> = HashMap::new();
+
+    for schedule in timetable.schedules.iter() {
+        for loc in schedule.locations.iter() {
+            stop_to_schedules
+                .entry(loc.id())
+                .or_default()
+                .insert(schedule.id.clone());
+        }
+    }
 
     Ok(())
 }

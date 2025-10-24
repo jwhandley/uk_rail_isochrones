@@ -1,7 +1,5 @@
 use std::{
-    fs::File,
     io::{BufRead, BufReader, Read},
-    path::Path,
     str::FromStr,
 };
 
@@ -10,24 +8,8 @@ use chrono::{NaiveDate, NaiveTime};
 
 use crate::cif::{parse_date_ddmmyy, parse_hhmm};
 
-pub struct Mca {
-    pub schedules: Vec<Schedule>,
-}
-
-impl Mca {
-    pub fn from_reader<R: Read>(r: R) -> Result<Self> {
-        let reader = BufReader::new(r);
-        parse_mca(reader)
-    }
-
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
-        parse_mca(reader)
-    }
-}
-
-fn parse_mca<R: BufRead>(reader: R) -> Result<Mca> {
+pub fn parse_mca<R: Read>(reader: R) -> Result<Vec<Schedule>> {
+    let reader = BufReader::new(reader);
     let mut schedules = vec![];
 
     let mut parsing_trip = false;
@@ -73,7 +55,7 @@ fn parse_mca<R: BufRead>(reader: R) -> Result<Mca> {
         }
     }
 
-    Ok(Mca { schedules })
+    Ok(schedules)
 }
 
 fn valid_activities(s: &str) -> bool {
