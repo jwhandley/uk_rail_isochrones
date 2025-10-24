@@ -24,9 +24,9 @@ pub fn parse_date_ddmmyy(s: &str) -> Result<NaiveDate> {
 }
 
 pub struct CifTimetable {
-    pub detail: Mca,
-    pub stations: Msn,
-    pub links: Alf,
+    pub mca: Mca,
+    pub msn: Msn,
+    pub alf: Alf,
 }
 
 impl CifTimetable {
@@ -53,10 +53,6 @@ impl CifTimetable {
         let mca = mca_opt.context("Failed to load MCA file")?;
         let alf = alf_opt.context("Failed to load ALF file")?;
 
-        Ok(Self {
-            detail: mca,
-            stations: msn,
-            links: alf,
-        })
+        Ok(Self { mca, msn, alf })
     }
 }

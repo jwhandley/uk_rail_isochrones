@@ -7,7 +7,7 @@ fn main() -> anyhow::Result<()> {
     let timetable = CifTimetable::read("../timetable-2025-10-24.zip")?;
     println!("Done in {:?}", now.elapsed());
 
-    let msn = timetable.stations;
+    let msn = timetable.msn;
     println!("Header: {:?}", msn.header);
     println!(
         "Read {} stations and {} aliases",
@@ -15,10 +15,10 @@ fn main() -> anyhow::Result<()> {
         msn.aliases.len()
     );
 
-    let alf = timetable.links;
+    let alf = timetable.alf;
     println!("Read {} links", alf.links.len());
 
-    let mca = timetable.detail;
+    let mca = timetable.mca;
     println!("Read {} schedules from timetable", mca.schedules.len());
 
     Ok(())
