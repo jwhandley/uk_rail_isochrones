@@ -1,6 +1,6 @@
 mod cif;
 mod csa;
-use chrono::{NaiveDate, NaiveTime};
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeDelta};
 use itertools::Itertools;
 
 use crate::{
@@ -41,12 +41,16 @@ fn main() -> anyhow::Result<()> {
     println!(
         "Querying accessible stops from Guildford Station ({lat}, {lon}) leaving at {departure_time}"
     );
-
+    let now = std::time::Instant::now();
     let arrival_times = network.query_lat_lon(lat, lon, departure_time);
+    println!("Done in {:?}", now.elapsed());
 
-    for (stop, time) in arrival_times.iter().sorted_by_key(|r| r.1).take(50) {
-        println!("Arrive at {stop:?} by {time}");
-    }
+    arrival_times
+        .iter()
+        .sorted_by_key(|(_, time)| *time)
+        .for_each(|(stop, time)| {
+            println!("Arrive at {stop:?} by {time}");
+        });
 
     Ok(())
 }
