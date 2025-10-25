@@ -2,7 +2,7 @@ use crate::csa::{
     adapter::CsaAdapter,
     stop_collection::{Stop, StopCollection},
 };
-use chrono::{Duration, NaiveTime, TimeDelta};
+use chrono::{Duration, NaiveDate, NaiveDateTime, NaiveTime, TimeDelta};
 use std::collections::{HashMap, HashSet};
 
 pub mod adapter;
@@ -29,12 +29,13 @@ impl TripId {
     }
 }
 
+#[derive(Debug)]
 pub struct Connection {
     pub trip_id: TripId,
     pub from_stop_id: StopId,
     pub to_stop_id: StopId,
-    pub departure_time: NaiveTime,
-    pub arrival_time: NaiveTime,
+    pub departure_time: NaiveDateTime,
+    pub arrival_time: NaiveDateTime,
 }
 
 pub struct Transfer {
@@ -47,6 +48,7 @@ pub struct TransportNetwork {
     stops: StopCollection,
     connections: Vec<Connection>,
     transfers: HashMap<StopId, Vec<Transfer>>,
+    date: NaiveDate,
 }
 
 impl TransportNetwork {
@@ -64,6 +66,7 @@ impl TransportNetwork {
             stops,
             connections,
             transfers,
+            date: adapter.date(),
         })
     }
 
@@ -72,10 +75,12 @@ impl TransportNetwork {
         lat: f64,
         lon: f64,
         departure_time: NaiveTime,
-    ) -> HashMap<Stop, NaiveTime> {
+    ) -> HashMap<Stop, NaiveDateTime> {
         let mut csa = CsaState::new();
+        let departure_date_time = NaiveDateTime::new(self.date, departure_time);
         for (stop_id, distance) in self.stops.stops_within_radius(lat, lon, 500.0) {
-            let time = departure_time + TimeDelta::seconds((distance / WALKING_SPEED_M_S) as i64);
+            let time =
+                departure_date_time + TimeDelta::seconds((distance / WALKING_SPEED_M_S) as i64);
             csa.update_arrival(stop_id, time);
 
             for transfer in self.get_transfers(stop_id) {
@@ -85,28 +90,33 @@ impl TransportNetwork {
             }
         }
 
-        self.scan_connections(&mut csa, departure_time)
+        self.scan_connections(&mut csa, departure_date_time)
     }
 
     #[allow(unused)]
-    pub fn query(&self, from_stop: StopId, departure_time: NaiveTime) -> HashMap<Stop, NaiveTime> {
+    pub fn query(
+        &self,
+        from_stop: StopId,
+        departure_time: NaiveTime,
+    ) -> HashMap<Stop, NaiveDateTime> {
+        let departure_date_time = NaiveDateTime::new(self.date, departure_time);
         let mut csa = CsaState::new();
-        csa.update_arrival(from_stop, departure_time);
+        csa.update_arrival(from_stop, departure_date_time);
 
-        self.scan_connections(&mut csa, departure_time)
+        self.scan_connections(&mut csa, departure_date_time)
     }
 
     fn scan_connections(
         &self,
         csa: &mut CsaState,
-        departure_time: NaiveTime,
-    ) -> HashMap<Stop, NaiveTime> {
+        departure_time: NaiveDateTime,
+    ) -> HashMap<Stop, NaiveDateTime> {
         let first_connection = self
             .connections
             .binary_search_by_key(&departure_time, |c| c.departure_time)
             .unwrap_or_else(|n| n);
 
-        for c in self.connections.iter().skip(first_connection - 1) {
+        for c in self.connections[first_connection..].iter() {
             let already_boarded = csa.has_boarded(c.trip_id);
             let can_board = csa.can_board(c.from_stop_id, c.departure_time);
 
@@ -147,7 +157,7 @@ impl TransportNetwork {
 
 #[derive(Debug, Default)]
 struct CsaState {
-    arrival_times: HashMap<StopId, NaiveTime>,
+    arrival_times: HashMap<StopId, NaiveDateTime>,
     boarded_trips: HashSet<TripId>,
 }
 
@@ -156,7 +166,7 @@ impl CsaState {
         Default::default()
     }
 
-    fn update_arrival(&mut self, stop_id: StopId, time: NaiveTime) {
+    fn update_arrival(&mut self, stop_id: StopId, time: NaiveDateTime) {
         self.arrival_times.insert(stop_id, time);
     }
 
@@ -168,14 +178,14 @@ impl CsaState {
         self.boarded_trips.contains(&trip_id)
     }
 
-    fn can_board(&self, stop_id: StopId, departure_time: NaiveTime) -> bool {
+    fn can_board(&self, stop_id: StopId, departure_time: NaiveDateTime) -> bool {
         self.arrival_times
             .get(&stop_id)
             .map(|&time| time <= departure_time)
             .unwrap_or(false)
     }
 
-    fn should_update_arrival(&self, stop_id: StopId, new_arrival: NaiveTime) -> bool {
+    fn should_update_arrival(&self, stop_id: StopId, new_arrival: NaiveDateTime) -> bool {
         self.arrival_times
             .get(&stop_id)
             .map(|&time| time > new_arrival)

@@ -18,9 +18,9 @@ pub fn parse_hhmm(s: &str) -> Result<NaiveTime> {
 }
 
 pub fn parse_date_ddmmyy(s: &str) -> Result<NaiveDate> {
-    let day: u32 = s[0..2].parse().expect("Invalid day");
-    let mon: u32 = s[2..4].parse().expect("Invalid month");
-    let yy: i32 = s[4..6].parse().expect("Invalid year");
+    let day: u32 = s[0..2].parse().context("Invalid day")?;
+    let mon: u32 = s[2..4].parse().context("Invalid month")?;
+    let yy: i32 = s[4..6].parse().context("Invalid year")?;
     let year = 2000 + yy;
     NaiveDate::from_ymd_opt(year, mon, day).ok_or_else(|| anyhow::anyhow!("invalid ddmmyy {s}"))
 }

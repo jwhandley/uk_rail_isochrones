@@ -1,6 +1,6 @@
 mod cif;
 mod csa;
-use chrono::NaiveTime;
+use chrono::{NaiveDate, NaiveTime};
 use itertools::Itertools;
 
 use crate::{
@@ -28,7 +28,9 @@ fn main() -> anyhow::Result<()> {
 
     let now = std::time::Instant::now();
     println!("Adapting to transport network");
-    let adapter = CifAdapter::new(&timetable, station_info);
+    let date = NaiveDate::from_ymd_opt(2025, 10, 24).unwrap();
+    let adapter = CifAdapter::new(&timetable, date, station_info);
+
     let network = TransportNetwork::from_adapter(&adapter)?;
     println!("Done in {:?}", now.elapsed());
 

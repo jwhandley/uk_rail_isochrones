@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use chrono::{NaiveDate, NaiveDateTime, TimeDelta};
 use itertools::Itertools;
 use serde::Deserialize;
 
@@ -24,10 +25,16 @@ pub struct CifAdapter<'a> {
     crs_to_stop_id: HashMap<String, StopId>,
     tiploc_to_stop_id: HashMap<String, StopId>,
     stops: HashMap<StopId, Stop>,
+    date: NaiveDate,
 }
 
 impl<'a> CifAdapter<'a> {
-    pub fn new(timetable: &'a CifTimetable, station_info: HashMap<String, StationInfo>) -> Self {
+    pub fn new(
+        timetable: &'a CifTimetable,
+        date: NaiveDate,
+        station_info: HashMap<String, StationInfo>,
+    ) -> Self {
+        // TODO: handle dates properly
         let mut crs_to_stop_id = HashMap::new();
         let mut tiploc_to_stop_id = HashMap::new();
         let mut stops = HashMap::new();
@@ -56,6 +63,7 @@ impl<'a> CifAdapter<'a> {
 
         Self {
             timetable,
+            date,
             crs_to_stop_id,
             tiploc_to_stop_id,
             stops,
@@ -65,6 +73,10 @@ impl<'a> CifAdapter<'a> {
 
 impl<'a> CsaAdapter for CifAdapter<'a> {
     type Error = anyhow::Error;
+
+    fn date(&self) -> NaiveDate {
+        self.date
+    }
 
     fn stops(&self) -> Result<HashMap<StopId, Stop>, Self::Error> {
         Ok(self.stops.clone())
@@ -108,12 +120,18 @@ impl<'a> CsaAdapter for CifAdapter<'a> {
                     .arrival_time()
                     .expect("Should only be intermediate or destination");
 
+                let arrival_date = if arrival_time < departure_time {
+                    NaiveDateTime::new(self.date + TimeDelta::days(1), arrival_time)
+                } else {
+                    NaiveDateTime::new(self.date, arrival_time)
+                };
+
                 let connection = Connection {
                     trip_id,
                     from_stop_id: from_id,
                     to_stop_id: to_id,
-                    departure_time,
-                    arrival_time,
+                    departure_time: NaiveDateTime::new(self.date, departure_time),
+                    arrival_time: arrival_date,
                 };
                 connections.push(connection);
             }

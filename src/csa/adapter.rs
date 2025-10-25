@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use chrono::NaiveDate;
+
 use crate::csa::{Connection, StopId, Transfer, stop_collection::Stop};
 
 pub trait CsaAdapter {
@@ -13,4 +15,6 @@ pub trait CsaAdapter {
 
     /// Returns footpath/transfer graph.
     fn transfers(&self) -> Result<HashMap<StopId, Vec<Transfer>>, Self::Error>;
+
+    fn date(&self) -> NaiveDate;
 }
