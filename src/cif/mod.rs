@@ -1,12 +1,15 @@
 use anyhow::{Context, Result};
 use chrono::{NaiveDate, NaiveTime};
-use std::{fs::File, path::Path};
+use std::{collections::HashMap, fs::File, path::Path};
 use zip::ZipArchive;
 
-use crate::cif::{
-    alf::{Link, parse_alf},
-    mca::{Schedule, parse_mca},
-    msn::{Msn, Station},
+use crate::{
+    cif::{
+        alf::{Link, parse_alf},
+        mca::{Schedule, parse_mca},
+        msn::{Msn, Station},
+    },
+    csa::{Connection, StopId, Transfer, adapter::CsaAdapter, stop_collection::Stop},
 };
 
 pub mod alf;

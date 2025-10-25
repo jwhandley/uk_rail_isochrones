@@ -20,9 +20,9 @@ pub fn parse_alf<R: Read>(reader: R) -> Result<Vec<Link>> {
 #[derive(Debug, Default)]
 pub struct Link {
     mode: Mode,
-    origin: String,
-    destination: String,
-    time: u32,
+    pub origin: String,
+    pub destination: String,
+    pub time: u32,
     start_time: NaiveTime,
     end_time: NaiveTime,
     priority: u8,
