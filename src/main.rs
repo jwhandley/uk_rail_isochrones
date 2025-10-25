@@ -1,13 +1,13 @@
 mod cif;
 mod csa;
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeDelta};
+use chrono::{NaiveDate, NaiveTime};
 use itertools::Itertools;
 
 use crate::{
     cif::CifTimetable,
     csa::{
-        TransportNetwork,
         adapters::cif::{CifAdapter, StationInfo},
+        transport_network::TransportNetwork,
     },
 };
 

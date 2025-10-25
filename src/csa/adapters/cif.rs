@@ -1,8 +1,18 @@
-use std::collections::HashMap;
-
+use anyhow::Result;
 use chrono::{NaiveDate, NaiveDateTime, TimeDelta};
 use itertools::Itertools;
 use serde::Deserialize;
+use std::collections::HashMap;
+
+use crate::{
+    cif::CifTimetable,
+    csa::{
+        StopId, TripId,
+        adapters::CsaAdapter,
+        stop_collection::Stop,
+        transport_network::{Connection, Transfer},
+    },
+};
 
 #[derive(Deserialize, Clone)]
 pub struct StationInfo {
@@ -14,11 +24,6 @@ pub struct StationInfo {
     #[serde(rename = "long")]
     lon: f64,
 }
-
-use crate::{
-    cif::CifTimetable,
-    csa::{Connection, StopId, Transfer, TripId, adapter::CsaAdapter, stop_collection::Stop},
-};
 
 pub struct CifAdapter<'a> {
     timetable: &'a CifTimetable,
@@ -78,11 +83,11 @@ impl<'a> CsaAdapter for CifAdapter<'a> {
         self.date
     }
 
-    fn stops(&self) -> Result<HashMap<StopId, Stop>, Self::Error> {
+    fn stops(&self) -> Result<HashMap<StopId, Stop>> {
         Ok(self.stops.clone())
     }
 
-    fn connections(&self) -> Result<Vec<Connection>, Self::Error> {
+    fn connections(&self) -> Result<Vec<Connection>> {
         // trip ID can be created from schedule ID
         // stop ID must be converted from tiplocs
         // Will need a map from tiploc to stop ID,
