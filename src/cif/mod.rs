@@ -3,13 +3,10 @@ use chrono::{NaiveDate, NaiveTime};
 use std::{collections::HashMap, fs::File, path::Path};
 use zip::ZipArchive;
 
-use crate::{
-    cif::{
-        alf::{Link, parse_alf},
-        mca::{Schedule, parse_mca},
-        msn::{Msn, Station},
-    },
-    csa::{Connection, StopId, Transfer, adapter::CsaAdapter, stop_collection::Stop},
+use crate::cif::{
+    alf::{Link, parse_alf},
+    mca::{Mca, Schedule, parse_mca},
+    msn::{Msn, Station},
 };
 
 pub mod alf;
@@ -58,6 +55,7 @@ impl CifTimetable {
 
         let msn = msn.transpose()?.context("Missing MSN file")?;
         let schedules = schedules.transpose()?.context("Missing MCA file")?;
+
         let alf = links.transpose()?.context("Missing ALF file")?;
 
         Ok(Self {

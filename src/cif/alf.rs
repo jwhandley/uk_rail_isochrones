@@ -1,5 +1,5 @@
 use anyhow::{Context, Result, bail};
-use chrono::{NaiveDate, NaiveTime};
+use chrono::{NaiveDate, NaiveTime, TimeDelta};
 use std::{
     io::{BufRead, BufReader, Read},
     str::FromStr,
@@ -20,9 +20,9 @@ pub fn parse_alf<R: Read>(reader: R) -> Result<Vec<Link>> {
 #[derive(Debug, Default)]
 pub struct Link {
     mode: Mode,
-    pub origin: String,
-    pub destination: String,
-    pub time: u32,
+    pub origin_crs: String,
+    pub dest_crs: String,
+    pub time: TimeDelta,
     start_time: NaiveTime,
     end_time: NaiveTime,
     priority: u8,
@@ -66,7 +66,7 @@ struct Acc {
     mode: Option<Mode>,
     origin: Option<String>,
     destination: Option<String>,
-    time: Option<u32>,
+    time: Option<TimeDelta>,
     start_time: Option<NaiveTime>,
     end_time: Option<NaiveTime>,
     priority: Option<u8>,
@@ -79,8 +79,8 @@ impl Acc {
     fn finish(self) -> Option<Link> {
         Some(Link {
             mode: self.mode?,
-            origin: self.origin?,
-            destination: self.destination?,
+            origin_crs: self.origin?,
+            dest_crs: self.destination?,
             time: self.time?,
             start_time: self.start_time?,
             end_time: self.end_time?,
@@ -115,13 +115,13 @@ pub fn parse_link(input: &str) -> Result<Link> {
     for (k, v) in input.split(',').filter_map(|s| s.split_once('=')) {
         match k {
             "M" => acc.mode = Some(v.parse()?),
-            "O" => acc.origin = Some(v.to_owned()),
-            "D" => acc.destination = Some(v.to_owned()),
+            "O" => acc.origin = Some(v.trim().to_owned()),
+            "D" => acc.destination = Some(v.trim().to_owned()),
             "T" => {
-                acc.time = Some(
-                    v.parse::<u32>()
+                acc.time = Some(TimeDelta::minutes(
+                    v.parse::<i64>()
                         .with_context(|| format!("invalid time minutes: {v}"))?,
-                )
+                ))
             }
             "S" => acc.start_time = Some(parse_hhmm(v)?),
             "E" => acc.end_time = Some(parse_hhmm(v)?),

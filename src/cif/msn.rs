@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use chrono::{NaiveDate, NaiveTime};
+use chrono::{NaiveDate, NaiveTime, TimeDelta};
 
 pub struct Msn {
     pub header: Header,
@@ -90,6 +90,7 @@ impl FromStr for Header {
     }
 }
 
+#[derive(Debug)]
 pub struct Station {
     pub station_name: String,
     pub interchange_status: u8,
@@ -98,20 +99,20 @@ pub struct Station {
     pub crs: String,
     pub easting: u32,
     pub northing: u32,
-    pub min_change_time: u32,
+    pub min_change_time: TimeDelta,
 }
 
 impl FromStr for Station {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let station_name = s[5..31].to_string();
+        let station_name = s[5..31].trim().to_string();
         let interchange_status: u8 = s[35..36]
             .trim()
             .parse()
             .with_context(|| format!("Invalid interchange status in {s}"))?;
 
-        let tiploc = s[36..43].to_string();
+        let tiploc = s[36..43].trim().to_string();
         let minor_crs = s[43..46].to_string();
         let crs = s[49..52].to_string();
         let easting: u32 = s[55..57]
@@ -122,7 +123,7 @@ impl FromStr for Station {
             .parse()
             .with_context(|| format!("Invalid northing in {s}"))?;
 
-        let min_change_time: u32 = s[63..65]
+        let min_change_time: i64 = s[63..65]
             .trim()
             .parse()
             .with_context(|| format!("Invalid change time in {s}"))?;
@@ -135,7 +136,7 @@ impl FromStr for Station {
             crs,
             easting,
             northing,
-            min_change_time,
+            min_change_time: TimeDelta::minutes(min_change_time),
         })
     }
 }

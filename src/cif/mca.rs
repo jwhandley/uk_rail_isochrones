@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     io::{BufRead, BufReader, Read},
     str::FromStr,
 };
@@ -7,6 +8,11 @@ use anyhow::Result;
 use chrono::{NaiveDate, NaiveTime};
 
 use crate::cif::{parse_date_ddmmyy, parse_hhmm};
+
+pub struct Mca {
+    pub schedules: Vec<Schedule>,
+    pub tiploc_to_crs: HashMap<String, String>,
+}
 
 pub fn parse_mca<R: Read>(reader: R) -> Result<Vec<Schedule>> {
     let reader = BufReader::new(reader);

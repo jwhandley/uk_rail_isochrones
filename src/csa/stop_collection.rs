@@ -1,14 +1,20 @@
 use kiddo::{SquaredEuclidean, float::kdtree};
-use std::{hash::Hash, ops::Index};
+use std::{collections::HashMap, hash::Hash, ops::Index};
 
 use crate::csa::StopId;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Stop {
-    id: StopId,
+    pub id: StopId,
     pub name: String,
     pub lat: f64,
     pub lon: f64,
+}
+
+impl Stop {
+    pub fn new(id: StopId, name: String, lat: f64, lon: f64) -> Self {
+        Self { id, name, lat, lon }
+    }
 }
 
 impl PartialEq for Stop {
@@ -27,14 +33,14 @@ impl Hash for Stop {
 
 pub struct StopCollection {
     tree: kdtree::KdTree<f64, usize, 3, 32, u32>,
-    stops: Vec<Stop>,
+    stops: HashMap<StopId, Stop>,
 }
 
-impl From<Vec<Stop>> for StopCollection {
-    fn from(stops: Vec<Stop>) -> Self {
+impl From<HashMap<StopId, Stop>> for StopCollection {
+    fn from(stops: HashMap<StopId, Stop>) -> Self {
         let mut tree: kdtree::KdTree<f64, usize, 3, 32, u32> = kdtree::KdTree::new();
-        stops.iter().for_each(|s| {
-            tree.add(&to_unit(s.lat, s.lon), s.id.0);
+        stops.iter().for_each(|(&id, s)| {
+            tree.add(&to_unit(s.lat, s.lon), id.0);
         });
 
         Self { tree, stops }
@@ -45,7 +51,7 @@ impl Index<StopId> for StopCollection {
     type Output = Stop;
 
     fn index(&self, index: StopId) -> &Self::Output {
-        &self.stops[index.0]
+        &self.stops[&index]
     }
 }
 

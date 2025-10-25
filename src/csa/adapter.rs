@@ -6,7 +6,7 @@ pub trait CsaAdapter {
     type Error;
 
     /// Returns a stable, deduplicated list of stops (in CSA order).
-    fn stops(&self) -> Result<Vec<Stop>, Self::Error>;
+    fn stops(&self) -> Result<HashMap<StopId, Stop>, Self::Error>;
 
     /// Returns all connections (any order); the builder will sort by departure.
     fn connections(&self) -> Result<Vec<Connection>, Self::Error>;

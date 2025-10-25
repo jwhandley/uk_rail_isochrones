@@ -6,6 +6,7 @@ use chrono::{Duration, NaiveTime, TimeDelta};
 use std::collections::{HashMap, HashSet};
 
 pub mod adapter;
+pub mod adapters;
 pub mod stop_collection;
 
 const WALKING_SPEED_M_S: f64 = 1.4;
@@ -52,7 +53,7 @@ impl TransportNetwork {
     pub fn from_adapter<A: CsaAdapter>(adapter: &A) -> Result<Self, A::Error> {
         let stops = adapter.stops()?;
         let mut connections = adapter.connections()?;
-        connections.sort_by_key(|c| c.departure_time); // single canonical sort
+        connections.sort_unstable_by_key(|c| c.departure_time); // single canonical sort
 
         // build a StopCollection (assign StopId by index)
         let stops = StopCollection::from(stops); // your existing type

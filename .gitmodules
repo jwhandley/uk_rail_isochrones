@@ -1,0 +1,3 @@
+[submodule "uk-railway-stations"]
+	path = uk-railway-stations
+	url = https://github.com/davwheat/uk-railway-stations
