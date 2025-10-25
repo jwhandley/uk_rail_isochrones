@@ -17,6 +17,7 @@ pub fn parse_alf<R: Read>(reader: R) -> Result<Vec<Link>> {
     Ok(links)
 }
 
+#[allow(unused)]
 #[derive(Debug, Default)]
 pub struct Link {
     mode: Mode,

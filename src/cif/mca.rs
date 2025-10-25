@@ -9,6 +9,7 @@ use chrono::{NaiveDate, NaiveTime};
 
 use crate::cif::{parse_date_ddmmyy, parse_hhmm};
 
+#[allow(unused)]
 pub struct Mca {
     pub schedules: Vec<Schedule>,
     pub tiploc_to_crs: HashMap<String, String>,
@@ -76,6 +77,7 @@ pub enum ScheduleType {
     Cancellation,
 }
 
+#[allow(unused)]
 #[derive(Debug)]
 pub struct Schedule {
     pub id: String,
@@ -217,6 +219,7 @@ impl Location {
         }
     }
 
+    #[allow(unused)]
     pub fn is_orign(&self) -> bool {
         match self {
             Location::Origin { .. } => true,

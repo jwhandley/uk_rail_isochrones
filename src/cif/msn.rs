@@ -8,6 +8,7 @@ use std::{
 use anyhow::{Context, Result};
 use chrono::{NaiveDate, NaiveTime, TimeDelta};
 
+#[allow(unused)]
 pub struct Msn {
     pub header: Header,
     pub stations: Vec<Station>,
@@ -22,6 +23,7 @@ impl Msn {
     }
 
     /// Convenience wrapper for plain files.
+    #[allow(unused)]
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let file = File::open(&path).with_context(|| format!("opening {:?}", path.as_ref()))?;
         Self::from_reader(file)
@@ -31,7 +33,7 @@ impl Msn {
 fn parse_msn<R: BufRead>(reader: R) -> Result<Msn> {
     let mut header = None;
     let mut stations = Vec::new();
-    let mut aliases = Vec::new();
+    let aliases = Vec::new();
 
     let mut parsed_header = false;
     for line in reader.lines() {
@@ -46,7 +48,7 @@ fn parse_msn<R: BufRead>(reader: R) -> Result<Msn> {
         } else if line.starts_with('A') {
             stations.push(Station::from_str(&line)?);
         } else if line.starts_with('L') {
-            aliases.push(Alias::from_str(&line)?);
+            // aliases.push(Alias::from_str(&line)?);
         }
     }
 
@@ -57,6 +59,7 @@ fn parse_msn<R: BufRead>(reader: R) -> Result<Msn> {
     })
 }
 
+#[allow(unused)]
 #[derive(Debug)]
 pub struct Header {
     pub version: f64,
@@ -90,6 +93,7 @@ impl FromStr for Header {
     }
 }
 
+#[allow(unused)]
 #[derive(Debug)]
 pub struct Station {
     pub station_name: String,
@@ -141,6 +145,7 @@ impl FromStr for Station {
     }
 }
 
+#[allow(unused)]
 pub struct Alias {
     pub station_name: String,
     pub station_alias: String,

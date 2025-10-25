@@ -3,6 +3,7 @@ use std::{collections::HashMap, hash::Hash, ops::Index};
 
 use crate::csa::StopId;
 
+#[allow(unused)]
 #[derive(Clone, Debug)]
 pub struct Stop {
     pub id: StopId,

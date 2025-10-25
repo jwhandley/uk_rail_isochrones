@@ -1,11 +1,11 @@
 use anyhow::{Context, Result};
 use chrono::{NaiveDate, NaiveTime};
-use std::{collections::HashMap, fs::File, path::Path};
+use std::{fs::File, path::Path};
 use zip::ZipArchive;
 
 use crate::cif::{
     alf::{Link, parse_alf},
-    mca::{Mca, Schedule, parse_mca},
+    mca::{Schedule, parse_mca},
     msn::{Msn, Station},
 };
 

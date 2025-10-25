@@ -21,7 +21,7 @@ impl StopId {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-struct TripId(usize);
+pub struct TripId(usize);
 
 impl TripId {
     pub fn new(idx: usize) -> Self {
@@ -88,6 +88,7 @@ impl TransportNetwork {
         self.scan_connections(&mut csa, departure_time)
     }
 
+    #[allow(unused)]
     pub fn query(&self, from_stop: StopId, departure_time: NaiveTime) -> HashMap<Stop, NaiveTime> {
         let mut csa = CsaState::new();
         csa.update_arrival(from_stop, departure_time);
