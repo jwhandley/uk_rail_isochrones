@@ -1,10 +1,9 @@
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeDelta};
-use geojson::ser::serialize_geometry;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::csa::{
-    StopId, TripId, adapters::CsaAdapter, csa_state::CsaState, stop_collection::StopCollection,
+    ArrivalTime, StopId, TripId, adapters::CsaAdapter, csa_state::CsaState,
+    stop_collection::StopCollection,
 };
 
 const WALKING_SPEED_M_S: f64 = 1.4;
@@ -31,23 +30,13 @@ pub struct TransportNetwork {
     date: NaiveDate,
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ArrivalTime {
-    pub stop_name: String,
-    pub arrival_time: NaiveDateTime,
-    #[serde(serialize_with = "serialize_geometry")]
-    pub geometry: geo_types::Point<f64>,
-}
-
 impl TransportNetwork {
     pub fn from_adapter<A: CsaAdapter>(adapter: &A) -> Result<Self, A::Error> {
         let stops = adapter.stops()?;
         let mut connections = adapter.connections()?;
-        connections.sort_unstable_by_key(|c| c.departure_time); // single canonical sort
+        connections.sort_unstable_by_key(|c| c.departure_time);
 
-        // build a StopCollection (assign StopId by index)
-        let stops = StopCollection::from(stops); // your existing type
+        let stops = StopCollection::from(stops);
 
         let transfers = adapter.transfers()?;
 

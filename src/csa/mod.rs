@@ -1,3 +1,6 @@
+use chrono::NaiveDateTime;
+use geojson::ser::serialize_geometry;
+use serde::Serialize;
 pub mod adapters;
 mod csa_state;
 mod stop_collection;
@@ -19,4 +22,13 @@ impl TripId {
     pub fn new(idx: usize) -> Self {
         Self(idx)
     }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArrivalTime {
+    pub stop_name: String,
+    pub arrival_time: NaiveDateTime,
+    #[serde(serialize_with = "serialize_geometry")]
+    pub geometry: geo_types::Point<f64>,
 }
