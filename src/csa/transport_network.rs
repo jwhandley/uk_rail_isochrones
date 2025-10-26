@@ -1,12 +1,10 @@
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeDelta};
-use std::collections::HashMap;
-
 use crate::csa::{
-    ArrivalTime, StopId, TripId, adapters::CsaAdapter, csa_state::CsaState,
-    stop_collection::StopCollection,
+    StopId, TripId,
+    adapters::CsaAdapter,
+    stop_collection::{Stop, StopCollection},
 };
-
-const WALKING_SPEED_M_S: f64 = 1.4;
+use chrono::{NaiveDate, NaiveDateTime, TimeDelta};
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Connection {
@@ -27,7 +25,7 @@ pub struct TransportNetwork {
     stops: StopCollection,
     connections: Vec<Connection>,
     transfers: HashMap<StopId, Vec<Transfer>>,
-    date: NaiveDate,
+    pub date: NaiveDate,
 }
 
 impl TransportNetwork {
@@ -48,70 +46,35 @@ impl TransportNetwork {
         })
     }
 
-    pub fn query_lat_lon(&self, lat: f64, lon: f64, departure_time: NaiveTime) -> Vec<ArrivalTime> {
-        let mut csa = CsaState::new();
-        let departure_time = NaiveDateTime::new(self.date, departure_time);
-        for (stop_id, distance) in self.stops.stops_within_radius(lat, lon, 500.0) {
-            let time = departure_time + TimeDelta::seconds((distance / WALKING_SPEED_M_S) as i64);
-            csa.update_arrival(stop_id, time);
-
-            for transfer in self.get_transfers(stop_id) {
-                if csa.should_update_arrival(transfer.to_stop_id, time + transfer.transfer_time) {
-                    csa.update_arrival(transfer.to_stop_id, time + transfer.transfer_time);
-                }
-            }
+    pub fn get_transfers(&self, stop: StopId) -> impl Iterator<Item = &Transfer> {
+        match self.transfers.get(&stop) {
+            Some(transfers) => transfers.iter(),
+            None => [].iter(),
         }
+    }
 
+    pub fn connections_after(
+        &self,
+        departure_time: NaiveDateTime,
+    ) -> impl Iterator<Item = &Connection> {
         let first_connection = self
             .connections
             .binary_search_by_key(&departure_time, |c| c.departure_time)
             .unwrap_or_else(|n| n);
 
-        for c in self.connections[first_connection..].iter() {
-            let already_boarded = csa.has_boarded(c.trip_id);
-            let can_board = csa.can_board(c.from_stop_id, c.departure_time);
-
-            if !already_boarded && !can_board {
-                continue;
-            }
-
-            csa.board_trip(c.trip_id.clone());
-
-            if csa.should_update_arrival(c.to_stop_id, c.arrival_time) {
-                csa.update_arrival(c.to_stop_id.clone(), c.arrival_time);
-
-                for transfer in self.get_transfers(c.to_stop_id) {
-                    let new_arrival = c.arrival_time + transfer.transfer_time;
-                    let earlier_arrival =
-                        csa.should_update_arrival(transfer.to_stop_id, new_arrival);
-
-                    if earlier_arrival {
-                        csa.update_arrival(transfer.to_stop_id.clone(), new_arrival);
-                    }
-                }
-            }
-        }
-
-        csa.arrival_times
-            .iter()
-            .map(|(k, &v)| {
-                let stop = &self.stops[k];
-                let arrival = v;
-
-                let location = geo_types::Point::new(stop.lon, stop.lat);
-                ArrivalTime {
-                    stop_name: stop.name.clone(),
-                    arrival_time: arrival,
-                    geometry: location,
-                }
-            })
-            .collect()
+        self.connections[first_connection..].iter()
     }
 
-    fn get_transfers(&self, stop: StopId) -> impl Iterator<Item = &Transfer> {
-        match self.transfers.get(&stop) {
-            Some(transfers) => transfers.iter(),
-            None => [].iter(),
-        }
+    pub fn stops_within_radius(
+        &self,
+        lat: f64,
+        lon: f64,
+        distance: f64,
+    ) -> impl Iterator<Item = (StopId, f64)> {
+        self.stops.stops_within_radius(lat, lon, distance)
+    }
+
+    pub fn stop(&self, id: StopId) -> &Stop {
+        &self.stops[&id]
     }
 }
