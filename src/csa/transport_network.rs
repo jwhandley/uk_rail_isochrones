@@ -1,12 +1,10 @@
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeDelta};
+use geojson::ser::serialize_geometry;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeDelta};
-
 use crate::csa::{
-    StopId, TripId,
-    adapters::CsaAdapter,
-    csa_state::CsaState,
-    stop_collection::{Stop, StopCollection},
+    StopId, TripId, adapters::CsaAdapter, csa_state::CsaState, stop_collection::StopCollection,
 };
 
 const WALKING_SPEED_M_S: f64 = 1.4;
@@ -33,6 +31,15 @@ pub struct TransportNetwork {
     date: NaiveDate,
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArrivalTime {
+    pub stop_name: String,
+    pub arrival_time: NaiveDateTime,
+    #[serde(serialize_with = "serialize_geometry")]
+    pub geometry: geo_types::Point<f64>,
+}
+
 impl TransportNetwork {
     pub fn from_adapter<A: CsaAdapter>(adapter: &A) -> Result<Self, A::Error> {
         let stops = adapter.stops()?;
@@ -52,12 +59,7 @@ impl TransportNetwork {
         })
     }
 
-    pub fn query_lat_lon(
-        &self,
-        lat: f64,
-        lon: f64,
-        departure_time: NaiveTime,
-    ) -> HashMap<Stop, NaiveDateTime> {
+    pub fn query_lat_lon(&self, lat: f64, lon: f64, departure_time: NaiveTime) -> Vec<ArrivalTime> {
         let mut csa = CsaState::new();
         let departure_time = NaiveDateTime::new(self.date, departure_time);
         for (stop_id, distance) in self.stops.stops_within_radius(lat, lon, 500.0) {
@@ -103,7 +105,17 @@ impl TransportNetwork {
 
         csa.arrival_times
             .iter()
-            .map(|(k, &v)| (self.stops[*k].clone(), v))
+            .map(|(k, &v)| {
+                let stop = &self.stops[*k];
+                let arrival = v;
+
+                let location = geo_types::Point::new(stop.lon, stop.lat);
+                ArrivalTime {
+                    stop_name: stop.name.clone(),
+                    arrival_time: arrival,
+                    geometry: location,
+                }
+            })
             .collect()
     }
 
