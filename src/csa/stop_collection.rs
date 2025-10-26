@@ -48,11 +48,11 @@ impl From<HashMap<StopId, Stop>> for StopCollection {
     }
 }
 
-impl Index<StopId> for StopCollection {
+impl Index<&StopId> for StopCollection {
     type Output = Stop;
 
-    fn index(&self, index: StopId) -> &Self::Output {
-        &self.stops[&index]
+    fn index(&self, index: &StopId) -> &Self::Output {
+        &self.stops[index]
     }
 }
 

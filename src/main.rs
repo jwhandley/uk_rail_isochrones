@@ -1,7 +1,5 @@
 mod cif;
 mod csa;
-use chrono::{NaiveDate, NaiveTime};
-
 use crate::{
     cif::CifTimetable,
     csa::{
@@ -9,8 +7,28 @@ use crate::{
         transport_network::TransportNetwork,
     },
 };
+use chrono::{NaiveDate, NaiveTime};
+use clap::{Parser, Subcommand};
+
+#[derive(Parser)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    Query {
+        lat: f64,
+        #[arg(allow_hyphen_values = true)]
+        lon: f64,
+        time: NaiveTime,
+    },
+}
 
 fn main() -> anyhow::Result<()> {
+    let args = Cli::parse();
+
     let now = std::time::Instant::now();
     eprintln!("Reading timetable");
     let timetable = CifTimetable::read("../timetable-2025-10-24.zip")?;
@@ -33,16 +51,8 @@ fn main() -> anyhow::Result<()> {
     let network = TransportNetwork::from_adapter(&adapter)?;
     eprintln!("Done in {:?}", now.elapsed());
 
-    let departure_time = NaiveTime::from_hms_opt(8, 30, 0).unwrap();
-    let lat = 51.237;
-    let lon = -0.58;
-
-    eprintln!(
-        "Querying accessible stops from Guildford Station ({lat}, {lon}) leaving at {departure_time}"
-    );
-    let now = std::time::Instant::now();
-    let arrival_times = network.query_lat_lon(lat, lon, departure_time);
-    eprintln!("Done in {:?}", now.elapsed());
+    let Commands::Query { lat, lon, time } = args.command;
+    let arrival_times = network.query_lat_lon(lat, lon, time);
     let geojson = geojson::ser::to_feature_collection_string(&arrival_times)?;
     println!("{geojson}");
 

@@ -95,7 +95,7 @@ impl TransportNetwork {
         csa.arrival_times
             .iter()
             .map(|(k, &v)| {
-                let stop = &self.stops[*k];
+                let stop = &self.stops[k];
                 let arrival = v;
 
                 let location = geo_types::Point::new(stop.lon, stop.lat);
