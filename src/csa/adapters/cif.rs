@@ -9,8 +9,7 @@ use crate::{
     csa::{
         StopId, TripId,
         adapters::CsaAdapter,
-        stop_collection::Stop,
-        transport_network::{Connection, Transfer},
+        transport_network::{Connection, Stop, Transfer},
     },
 };
 

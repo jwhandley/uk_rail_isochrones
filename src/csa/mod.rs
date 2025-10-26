@@ -5,7 +5,6 @@ use serde::Serialize;
 use crate::csa::transport_network::TransportNetwork;
 pub mod adapters;
 mod csa_state;
-mod stop_collection;
 pub mod transport_network;
 
 const WALKING_SPEED_M_S: f64 = 1.4;

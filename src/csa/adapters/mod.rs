@@ -6,8 +6,7 @@ use chrono::NaiveDate;
 
 use crate::csa::{
     StopId,
-    stop_collection::Stop,
-    transport_network::{Connection, Transfer},
+    transport_network::{Connection, Stop, Transfer},
 };
 
 pub trait CsaAdapter {
