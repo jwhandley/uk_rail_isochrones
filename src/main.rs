@@ -2,7 +2,7 @@ mod adapters;
 mod cif;
 mod csa;
 use crate::{
-    cif::{CifTimetable, adapter::CifAdapter},
+    cif::CifTimetable,
     csa::{TransportNetwork, to_feature_collection},
 };
 use chrono::{NaiveDate, NaiveTime};
@@ -35,8 +35,7 @@ fn main() -> anyhow::Result<()> {
 
     let now = std::time::Instant::now();
     eprintln!("Adapting to transport network");
-    let adapter = CifAdapter::new(&timetable);
-    let network = TransportNetwork::from_adapter(&adapter)?;
+    let network = TransportNetwork::try_from(&timetable)?;
     eprintln!("Done in {:?}", now.elapsed());
 
     let Commands::Query {
