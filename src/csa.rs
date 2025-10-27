@@ -43,16 +43,14 @@ const WALKING_SPEED_M_S: f64 = 1.4;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Stop {
-    #[allow(unused)]
-    pub id: StopId,
     pub name: String,
     pub lat: f64,
     pub lon: f64,
 }
 
 impl Stop {
-    pub fn new(id: StopId, name: String, lat: f64, lon: f64) -> Self {
-        Self { id, name, lat, lon }
+    pub fn new(name: String, lat: f64, lon: f64) -> Self {
+        Self { name, lat, lon }
     }
 }
 

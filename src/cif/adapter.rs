@@ -57,7 +57,7 @@ impl<'a> CifAdapter<'a> {
             let lat = info.lat;
             let lon = info.lon;
 
-            let stop = Stop::new(id, name, lat, lon);
+            let stop = Stop::new(name, lat, lon);
 
             stops.insert(id, stop);
             tiploc_to_stop_id.insert(tiploc, id.clone());
