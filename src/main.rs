@@ -1,15 +1,26 @@
 mod adapters;
 mod cif;
 mod csa;
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use crate::{
     cif::CifTimetable,
     csa::{TransportNetwork, to_feature_collection},
 };
+use axum::{
+    Json, Router,
+    extract::{Query, State},
+    http::StatusCode,
+    routing::get,
+};
 use chrono::{NaiveDate, NaiveTime};
 use clap::{Parser, Subcommand};
 use geojson::FeatureCollection;
+use serde::Deserialize;
+use tracing::info;
 
 #[derive(Parser)]
 struct Cli {
@@ -33,16 +44,26 @@ enum Commands {
         date: NaiveDate,
         time: NaiveTime,
     },
+    Serve {
+        network_path: PathBuf,
+    },
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() {
+    tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
+        .init();
+
     let args = Cli::parse();
 
     match args.command {
         Commands::Import {
             timetable_path,
             network_path,
-        } => import_timetable(timetable_path, network_path),
+        } => {
+            import_timetable(timetable_path, network_path).expect("Unable to import CIF timetable");
+        }
         Commands::Query {
             network_path,
             lat,
@@ -50,9 +71,27 @@ fn main() -> anyhow::Result<()> {
             date,
             time,
         } => {
-            let geojson = run_query(network_path, lat, lon, date, time)?;
+            let network = TransportNetwork::load(network_path).expect("Failed to load network");
+            let geojson =
+                run_query(&network, lat, lon, date, time).expect("Failed to execute query");
             println!("{}", geojson.to_string());
-            Ok(())
+        }
+        Commands::Serve { network_path } => {
+            info!("Loading network from file");
+            let network = TransportNetwork::load(network_path).expect("Failed to load network");
+            let network = Arc::from(network);
+
+            let app = Router::new()
+                .route("/isochrone", get(isochrone))
+                .with_state(network);
+
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
+                .await
+                .unwrap();
+
+            info!("listening on {}", listener.local_addr().unwrap());
+
+            axum::serve(listener, app).await.unwrap()
         }
     }
 }
@@ -62,40 +101,58 @@ fn import_timetable(
     network_path: impl AsRef<Path>,
 ) -> anyhow::Result<()> {
     let now = std::time::Instant::now();
-    eprintln!("Reading timetable");
+    info!("Reading timetable");
     let timetable = CifTimetable::read(timetable_path)?;
-    eprintln!("Done in {:?}", now.elapsed());
+    info!("Done in {:?}", now.elapsed());
 
     let now = std::time::Instant::now();
-    eprintln!("Adapting to transport network");
+    info!("Adapting to transport network");
     let network = TransportNetwork::try_from(&timetable)?;
-    eprintln!("Done in {:?}", now.elapsed());
+    info!("Done in {:?}", now.elapsed());
 
     let now = std::time::Instant::now();
-    eprintln!("Saving network");
+    info!("Saving network");
     network.save(network_path)?;
-    eprintln!("Done in {:?}", now.elapsed());
+    info!("Done in {:?}", now.elapsed());
 
     Ok(())
 }
 
+#[derive(Deserialize)]
+struct IsochroneParams {
+    lat: f64,
+    lon: f64,
+    date: NaiveDate,
+    time: NaiveTime,
+}
+
+async fn isochrone(
+    Query(params): Query<IsochroneParams>,
+    State(network): State<Arc<TransportNetwork>>,
+) -> Result<Json<FeatureCollection>, StatusCode> {
+    let IsochroneParams {
+        lat,
+        lon,
+        date,
+        time,
+    } = params;
+
+    let features = run_query(&network, lat, lon, date, time);
+    features
+        .map(|f| Json(f))
+        .map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
 fn run_query(
-    network_path: impl AsRef<Path>,
+    network: &TransportNetwork,
     lat: f64,
     lon: f64,
     date: NaiveDate,
     time: NaiveTime,
 ) -> anyhow::Result<FeatureCollection> {
     let now = std::time::Instant::now();
-    eprintln!("Loading network");
-    let network = TransportNetwork::load(network_path)?;
-    eprintln!("Done in {:?}", now.elapsed());
-
-    let now = std::time::Instant::now();
-    eprintln!(
-        "Querying network for arrival times starting from ({lat}, {lon}) on {date} at {time}"
-    );
+    info!("Querying network for arrival times starting from ({lat}, {lon}) on {date} at {time}");
     let arrival_times = network.query_lat_lon(lat, lon, date, time);
-    eprintln!("Done in {:?}", now.elapsed());
+    info!("Done in {:?}", now.elapsed());
     to_feature_collection(&arrival_times)
 }
