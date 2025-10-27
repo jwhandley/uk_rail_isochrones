@@ -252,17 +252,14 @@ impl TransportNetwork {
             .collect()
     }
 
-    pub fn get_transfers(&self, stop: StopId) -> impl Iterator<Item = &Transfer> {
+    fn get_transfers(&self, stop: StopId) -> impl Iterator<Item = &Transfer> {
         match self.transfers.get(&stop) {
             Some(transfers) => transfers.iter(),
             None => [].iter(),
         }
     }
 
-    pub fn connections_after(
-        &self,
-        departure_time: NaiveTime,
-    ) -> impl Iterator<Item = &Connection> {
+    fn connections_after(&self, departure_time: NaiveTime) -> impl Iterator<Item = &Connection> {
         let first_connection = self
             .connections
             .binary_search_by_key(&departure_time, |c| c.departure_time)
@@ -271,7 +268,7 @@ impl TransportNetwork {
         self.connections[first_connection..].iter()
     }
 
-    pub fn stops_within_radius(
+    fn stops_within_radius(
         &self,
         lat: f64,
         lon: f64,
@@ -283,7 +280,7 @@ impl TransportNetwork {
             .map(|x| (StopId(x.item), chord2_to_meters(x.distance)))
     }
 
-    pub fn stop(&self, id: StopId) -> &Stop {
+    fn stop(&self, id: StopId) -> &Stop {
         &self.stops[&id]
     }
 }
@@ -324,9 +321,9 @@ pub fn to_feature_collection(arrival_times: &[ArrivalTime]) -> anyhow::Result<Fe
 }
 
 #[derive(Debug, Default)]
-pub struct CsaState {
-    pub arrival_times: HashMap<StopId, NaiveDateTime>,
-    pub boarded_trips: HashSet<TripId>,
+struct CsaState {
+    arrival_times: HashMap<StopId, NaiveDateTime>,
+    boarded_trips: HashSet<TripId>,
 }
 
 impl CsaState {
