@@ -1,7 +1,7 @@
 use axum::{
     Json, Router,
     extract::{Query, State},
-    http::{HeaderValue, Method, StatusCode},
+    http::{Method, StatusCode},
     routing::get,
 };
 use chrono::{NaiveDate, NaiveTime};
@@ -86,7 +86,12 @@ async fn main() {
                 .route("/isochrone", get(isochrone))
                 .layer(
                     CorsLayer::new()
-                        .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap())
+                        .allow_origin([
+                            "http://localhost:5173".parse().unwrap(),
+                            "https://jwhandley.github.io/rail-isochrone-viewer"
+                                .parse()
+                                .unwrap(),
+                        ])
                         .allow_methods([Method::GET]),
                 )
                 .with_state(network);
