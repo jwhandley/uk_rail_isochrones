@@ -34,7 +34,7 @@ impl TripId {
 #[serde(rename_all = "camelCase")]
 pub struct ArrivalTime {
     pub stop_name: String,
-    pub arrival_time: NaiveDateTime,
+    pub arrival_time: i64,
     #[serde(serialize_with = "serialize_geometry")]
     pub geometry: geo_types::Point<f64>,
 }
@@ -195,7 +195,7 @@ impl TransportNetwork {
         let departure_date_time = NaiveDateTime::new(date, departure_time);
         let mut csa = CsaState::new();
 
-        for (stop_id, distance) in self.stops_within_radius(lat, lon, 500.0) {
+        for (stop_id, distance) in self.stops_within_radius(lat, lon, 1000.0) {
             let time =
                 departure_date_time + TimeDelta::seconds((distance / WALKING_SPEED_M_S) as i64);
             csa.update_arrival(stop_id, time);
@@ -240,12 +240,12 @@ impl TransportNetwork {
             .iter()
             .map(|(&k, &v)| {
                 let stop = self.stop(k);
-                let arrival = v;
+                let arrival = v - departure_date_time;
 
                 let location = geo_types::Point::new(stop.lon, stop.lat);
                 ArrivalTime {
                     stop_name: stop.name.clone(),
-                    arrival_time: arrival,
+                    arrival_time: arrival.num_seconds(),
                     geometry: location,
                 }
             })

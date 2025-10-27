@@ -1,7 +1,7 @@
 use axum::{
     Json, Router,
     extract::{Query, State},
-    http::StatusCode,
+    http::{HeaderValue, Method, StatusCode},
     routing::get,
 };
 use chrono::{NaiveDate, NaiveTime};
@@ -12,6 +12,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use tower_http::cors::CorsLayer;
 use tracing::info;
 
 mod adapters;
@@ -83,6 +84,11 @@ async fn main() {
 
             let app = Router::new()
                 .route("/isochrone", get(isochrone))
+                .layer(
+                    CorsLayer::new()
+                        .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap())
+                        .allow_methods([Method::GET]),
+                )
                 .with_state(network);
 
             let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
