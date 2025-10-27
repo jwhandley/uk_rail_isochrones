@@ -1,14 +1,12 @@
+mod adapters;
 mod cif;
 mod csa;
 use crate::{
+    adapters::cif::{CifAdapter, StationInfo},
     cif::CifTimetable,
-    csa::{
-        adapters::cif::{CifAdapter, StationInfo},
-        query_lat_lon,
-        transport_network::TransportNetwork,
-    },
+    csa::{query_lat_lon, to_feature_collection, transport_network::TransportNetwork},
 };
-use chrono::{NaiveDate, NaiveTime};
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
@@ -53,9 +51,10 @@ fn main() -> anyhow::Result<()> {
     eprintln!("Done in {:?}", now.elapsed());
 
     let Commands::Query { lat, lon, time } = args.command;
-    let arrival_times = query_lat_lon(&network, lat, lon, time);
-    let geojson = geojson::ser::to_feature_collection_string(&arrival_times)?;
-    println!("{geojson}");
+    let departure_time = NaiveDateTime::new(date, time);
+    let arrival_times = query_lat_lon(&network, lat, lon, departure_time);
+    let geojson = to_feature_collection(&arrival_times)?;
+    println!("{}", geojson.to_string());
 
     Ok(())
 }

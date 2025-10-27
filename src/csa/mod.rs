@@ -1,9 +1,8 @@
-use chrono::{NaiveDateTime, NaiveTime, TimeDelta};
-use geojson::ser::serialize_geometry;
+use chrono::{NaiveDateTime, TimeDelta};
+use geojson::{Feature, FeatureCollection, ser::serialize_geometry};
 use serde::Serialize;
 
 use crate::csa::transport_network::TransportNetwork;
-pub mod adapters;
 mod csa_state;
 pub mod transport_network;
 
@@ -40,10 +39,10 @@ pub fn query_lat_lon(
     network: &TransportNetwork,
     lat: f64,
     lon: f64,
-    departure_time: NaiveTime,
+    departure_time: NaiveDateTime,
 ) -> Vec<ArrivalTime> {
     let mut csa = csa_state::CsaState::new();
-    let departure_time = NaiveDateTime::new(network.date, departure_time);
+
     for (stop_id, distance) in network.stops_within_radius(lat, lon, 500.0) {
         let time = departure_time + TimeDelta::seconds((distance / WALKING_SPEED_M_S) as i64);
         csa.update_arrival(stop_id, time);
@@ -93,4 +92,17 @@ pub fn query_lat_lon(
             }
         })
         .collect()
+}
+
+pub fn to_feature_collection(arrival_times: &[ArrivalTime]) -> anyhow::Result<FeatureCollection> {
+    let features = arrival_times
+        .into_iter()
+        .map(|t| geojson::ser::to_feature(t))
+        .collect::<Result<Vec<Feature>, geojson::Error>>()?;
+
+    Ok(FeatureCollection {
+        bbox: None,
+        features,
+        foreign_members: None,
+    })
 }

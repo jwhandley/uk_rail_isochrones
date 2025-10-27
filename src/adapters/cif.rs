@@ -5,10 +5,10 @@ use serde::Deserialize;
 use std::collections::HashMap;
 
 use crate::{
+    adapters::CsaAdapter,
     cif::CifTimetable,
     csa::{
         StopId, TripId,
-        adapters::CsaAdapter,
         transport_network::{Connection, Stop, Transfer},
     },
 };
@@ -78,10 +78,6 @@ impl<'a> CifAdapter<'a> {
 impl<'a> CsaAdapter for CifAdapter<'a> {
     type Error = anyhow::Error;
 
-    fn date(&self) -> NaiveDate {
-        self.date
-    }
-
     fn stops(&self) -> Result<HashMap<StopId, Stop>> {
         Ok(self.stops.clone())
     }
@@ -102,13 +98,6 @@ impl<'a> CsaAdapter for CifAdapter<'a> {
                 .iter()
                 .filter(|loc| self.tiploc_to_stop_id.contains_key(&loc.id()))
                 .collect();
-
-            // if schedule.locations.len() > locations.len() {
-            //     println!(
-            //         "Warning: removed {} locations which were not present in tiploc to stop ID lookup",
-            //         schedule.locations.len() - locations.len()
-            //     );
-            // }
 
             for locs in locations.windows(2) {
                 let from = &locs[0];

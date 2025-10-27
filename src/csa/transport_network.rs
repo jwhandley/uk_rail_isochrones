@@ -1,5 +1,6 @@
-use crate::csa::{StopId, TripId, adapters::CsaAdapter};
-use chrono::{NaiveDate, NaiveDateTime, TimeDelta};
+use crate::adapters::CsaAdapter;
+use crate::csa::{StopId, TripId};
+use chrono::{NaiveDateTime, TimeDelta};
 use kiddo::{SquaredEuclidean, float::kdtree};
 use std::collections::HashMap;
 
@@ -38,7 +39,6 @@ pub struct TransportNetwork {
     stops: HashMap<StopId, Stop>,
     connections: Vec<Connection>,
     transfers: HashMap<StopId, Vec<Transfer>>,
-    pub date: NaiveDate,
 }
 
 impl TransportNetwork {
@@ -58,7 +58,6 @@ impl TransportNetwork {
             stops,
             connections,
             transfers,
-            date: adapter.date(),
         })
     }
 

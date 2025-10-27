@@ -2,8 +2,6 @@ pub mod cif;
 
 use std::collections::HashMap;
 
-use chrono::NaiveDate;
-
 use crate::csa::{
     StopId,
     transport_network::{Connection, Stop, Transfer},
@@ -20,6 +18,4 @@ pub trait CsaAdapter {
 
     /// Returns footpath/transfer graph.
     fn transfers(&self) -> Result<HashMap<StopId, Vec<Transfer>>, Self::Error>;
-
-    fn date(&self) -> NaiveDate;
 }
