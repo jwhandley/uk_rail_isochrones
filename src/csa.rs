@@ -1,14 +1,11 @@
 use std::{
     collections::{HashMap, HashSet},
-    fs::File,
-    io::{BufReader, BufWriter},
     path::Path,
 };
 
-use anyhow::Context;
 use chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, TimeDelta};
 use geojson::{Feature, FeatureCollection, ser::serialize_geometry};
-use kiddo::{SquaredEuclidean, float::kdtree};
+use kiddo::{KdTree, SquaredEuclidean};
 use serde::{Deserialize, Serialize};
 
 use crate::adapters::CsaAdapter;
@@ -16,19 +13,19 @@ use crate::adapters::CsaAdapter;
 #[derive(
     Clone, Copy, Debug, PartialEq, Eq, Hash, Default, PartialOrd, Ord, Deserialize, Serialize,
 )]
-pub struct StopId(usize);
+pub struct StopId(u64);
 
 impl StopId {
-    pub fn new(idx: usize) -> Self {
+    pub fn new(idx: u64) -> Self {
         Self(idx)
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
-pub struct TripId(usize);
+pub struct TripId(u64);
 
 impl TripId {
-    pub fn new(idx: usize) -> Self {
+    pub fn new(idx: u64) -> Self {
         Self(idx)
     }
 }
@@ -118,7 +115,7 @@ impl Calendar {
             .get(&trip_id)
             .map(|c| c.iter().any(|s| s.runs_on(date)))
             .unwrap_or(false);
-        // dbg!(service_runs, cancelled, date);
+
         service_runs && !cancelled
     }
 }
@@ -149,7 +146,7 @@ impl Service {
 
 #[derive(Serialize, Deserialize)]
 pub struct TransportNetwork {
-    tree: kdtree::KdTree<f64, usize, 3, 32, u32>,
+    tree: kiddo::KdTree<f64, 3>,
     stops: HashMap<StopId, Stop>,
     connections: Vec<Connection>,
     transfers: HashMap<StopId, Vec<Transfer>>,
@@ -158,16 +155,14 @@ pub struct TransportNetwork {
 
 impl TransportNetwork {
     pub fn load<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
-        let network = serde_json::from_reader(reader)?;
-        Ok(network)
+        let bytes = std::fs::read(path)?;
+        Ok(postcard::from_bytes(&bytes)?)
     }
 
     pub fn save<P: AsRef<Path>>(&self, path: P) -> anyhow::Result<()> {
-        let file = File::create(path)?;
-        let writer = BufWriter::new(file);
-        serde_json::to_writer(writer, self).context("Couldn't serialize timetable to json")
+        let bytes = postcard::to_stdvec(self)?;
+        std::fs::write(path, &bytes)?;
+        Ok(())
     }
 
     pub fn from_adapter<A: CsaAdapter>(adapter: &A) -> Result<Self, A::Error> {
@@ -175,10 +170,11 @@ impl TransportNetwork {
         let mut connections = adapter.connections()?;
         connections.sort_unstable_by_key(|c| c.departure_time);
 
-        let mut tree: kdtree::KdTree<f64, usize, 3, 32, u32> = kdtree::KdTree::new();
+        let mut tree = KdTree::new();
         stops.iter().for_each(|(&id, s)| {
             tree.add(&to_unit(s.lat, s.lon), id.0);
         });
+
         let transfers = adapter.transfers()?;
         let calendar = adapter.calendar()?;
 

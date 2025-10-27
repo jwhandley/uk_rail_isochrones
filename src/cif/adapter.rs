@@ -48,7 +48,7 @@ impl<'a> CifAdapter<'a> {
             .filter(|s| station_info.contains_key(&s.crs))
             .enumerate()
         {
-            let id = StopId::new(i);
+            let id = StopId::new(i as u64);
             let crs = s.crs.clone();
             let tiploc = s.tiploc.clone();
 
@@ -65,7 +65,7 @@ impl<'a> CifAdapter<'a> {
         }
 
         for (i, schedule) in timetable.schedules.iter().enumerate() {
-            let trip_id = TripId::new(i);
+            let trip_id = TripId::new(i as u64);
             schedule_to_trip_id.insert(schedule.id.clone(), trip_id);
         }
 
