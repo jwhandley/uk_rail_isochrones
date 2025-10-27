@@ -70,7 +70,7 @@ impl CifTimetable {
 impl<'a> TryFrom<&'a CifTimetable> for TransportNetwork {
     type Error = anyhow::Error;
     fn try_from(value: &'a CifTimetable) -> Result<Self, Self::Error> {
-        let adapter = CifAdapter::new(value);
+        let adapter = CifAdapter::new(value)?;
         TransportNetwork::from_adapter(&adapter)
     }
 }

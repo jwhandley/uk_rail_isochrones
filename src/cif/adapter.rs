@@ -29,10 +29,9 @@ pub struct CifAdapter<'a> {
 }
 
 impl<'a> CifAdapter<'a> {
-    pub fn new(timetable: &'a CifTimetable) -> Self {
+    pub fn new(timetable: &'a CifTimetable) -> Result<Self> {
         let station_str = include_str!("../../uk-railway-stations/stations.json");
-        let station_info: Vec<StationInfo> =
-            serde_json::from_str(station_str).expect("stations.json to be in the expected format");
+        let station_info: Vec<StationInfo> = serde_json::from_str(station_str)?;
         let station_info: HashMap<String, StationInfo> = station_info
             .into_iter()
             .map(|s| (s.crs.clone(), s))
@@ -70,13 +69,13 @@ impl<'a> CifAdapter<'a> {
             schedule_to_trip_id.insert(schedule.id.clone(), trip_id);
         }
 
-        Self {
+        Ok(Self {
             timetable,
             schedule_to_trip_id,
             crs_to_stop_id,
             tiploc_to_stop_id,
             stops,
-        }
+        })
     }
 }
 

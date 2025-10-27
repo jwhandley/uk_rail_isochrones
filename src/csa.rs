@@ -1,13 +1,21 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    fs::File,
+    io::{BufReader, BufWriter},
+    path::Path,
+};
 
+use anyhow::Context;
 use chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, TimeDelta};
 use geojson::{Feature, FeatureCollection, ser::serialize_geometry};
 use kiddo::{SquaredEuclidean, float::kdtree};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::adapters::CsaAdapter;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, PartialOrd, Ord)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, PartialOrd, Ord, Deserialize, Serialize,
+)]
 pub struct StopId(usize);
 
 impl StopId {
@@ -16,7 +24,7 @@ impl StopId {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct TripId(usize);
 
 impl TripId {
@@ -36,7 +44,7 @@ pub struct ArrivalTime {
 
 const WALKING_SPEED_M_S: f64 = 1.4;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Stop {
     #[allow(unused)]
     pub id: StopId,
@@ -51,7 +59,7 @@ impl Stop {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Connection {
     pub trip_id: TripId,
     pub from_stop_id: StopId,
@@ -60,6 +68,7 @@ pub struct Connection {
     pub arrival_time: NaiveTime,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Transfer {
     pub from_stop_id: StopId,
     pub to_stop_id: StopId,
@@ -80,6 +89,7 @@ impl Connection {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Calendar {
     services: HashMap<TripId, Vec<Service>>,
     cancellations: HashMap<TripId, Vec<Service>>,
@@ -113,7 +123,7 @@ impl Calendar {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Service {
     start_date: NaiveDate,
     end_date: NaiveDate,
@@ -137,6 +147,7 @@ impl Service {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct TransportNetwork {
     tree: kdtree::KdTree<f64, usize, 3, 32, u32>,
     stops: HashMap<StopId, Stop>,
@@ -146,6 +157,19 @@ pub struct TransportNetwork {
 }
 
 impl TransportNetwork {
+    pub fn load<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+        let network = serde_json::from_reader(reader)?;
+        Ok(network)
+    }
+
+    pub fn save<P: AsRef<Path>>(&self, path: P) -> anyhow::Result<()> {
+        let file = File::create(path)?;
+        let writer = BufWriter::new(file);
+        serde_json::to_writer(writer, self).context("Couldn't serialize timetable to json")
+    }
+
     pub fn from_adapter<A: CsaAdapter>(adapter: &A) -> Result<Self, A::Error> {
         let stops = adapter.stops()?;
         let mut connections = adapter.connections()?;

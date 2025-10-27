@@ -38,6 +38,16 @@ fn main() -> anyhow::Result<()> {
     let network = TransportNetwork::try_from(&timetable)?;
     eprintln!("Done in {:?}", now.elapsed());
 
+    let now = std::time::Instant::now();
+    eprintln!("Saving network");
+    network.save("./network.json")?;
+    eprintln!("Done in {:?}", now.elapsed());
+
+    let now = std::time::Instant::now();
+    eprintln!("Loading network");
+    _ = TransportNetwork::load("./network.json")?;
+    eprintln!("Done in {:?}", now.elapsed());
+
     let Commands::Query {
         lat,
         lon,
