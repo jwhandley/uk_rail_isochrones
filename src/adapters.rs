@@ -1,5 +1,4 @@
-use crate::csa::{Connection, Stop, StopId, Transfer};
-use chrono::NaiveDate;
+use crate::csa::{Calendar, Connection, Stop, StopId, Transfer};
 use std::collections::HashMap;
 
 pub trait CsaAdapter {
@@ -9,8 +8,10 @@ pub trait CsaAdapter {
     fn stops(&self) -> Result<HashMap<StopId, Stop>, Self::Error>;
 
     /// Returns all connections (any order); the builder will sort by departure.
-    fn connections(&self, date: NaiveDate) -> Result<Vec<Connection>, Self::Error>;
+    fn connections(&self) -> Result<Vec<Connection>, Self::Error>;
 
     /// Returns footpath/transfer graph.
     fn transfers(&self) -> Result<HashMap<StopId, Vec<Transfer>>, Self::Error>;
+
+    fn calendar(&self) -> Result<Calendar, Self::Error>;
 }

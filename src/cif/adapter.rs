@@ -1,5 +1,4 @@
 use anyhow::Result;
-use chrono::{NaiveDate, NaiveDateTime, TimeDelta};
 use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -7,7 +6,7 @@ use std::collections::HashMap;
 use crate::{
     adapters::CsaAdapter,
     cif::CifTimetable,
-    csa::{Connection, Stop, StopId, Transfer, TripId},
+    csa::{Calendar, Connection, Service, Stop, StopId, Transfer, TripId},
 };
 
 #[derive(Deserialize, Clone)]
@@ -23,6 +22,7 @@ pub struct StationInfo {
 
 pub struct CifAdapter<'a> {
     timetable: &'a CifTimetable,
+    schedule_to_trip_id: HashMap<String, TripId>,
     crs_to_stop_id: HashMap<String, StopId>,
     tiploc_to_stop_id: HashMap<String, StopId>,
     stops: HashMap<StopId, Stop>,
@@ -38,10 +38,10 @@ impl<'a> CifAdapter<'a> {
             .map(|s| (s.crs.clone(), s))
             .collect();
 
-        // TODO: handle dates properly
         let mut crs_to_stop_id = HashMap::new();
         let mut tiploc_to_stop_id = HashMap::new();
         let mut stops = HashMap::new();
+        let mut schedule_to_trip_id = HashMap::new();
 
         for (i, s) in timetable
             .stations
@@ -65,8 +65,14 @@ impl<'a> CifAdapter<'a> {
             crs_to_stop_id.insert(crs, id);
         }
 
+        for (i, schedule) in timetable.schedules.iter().enumerate() {
+            let trip_id = TripId::new(i);
+            schedule_to_trip_id.insert(schedule.id.clone(), trip_id);
+        }
+
         Self {
             timetable,
+            schedule_to_trip_id,
             crs_to_stop_id,
             tiploc_to_stop_id,
             stops,
@@ -81,7 +87,27 @@ impl<'a> CsaAdapter for CifAdapter<'a> {
         Ok(self.stops.clone())
     }
 
-    fn connections(&self, date: NaiveDate) -> Result<Vec<Connection>> {
+    fn calendar(&self) -> Result<Calendar> {
+        let mut services: HashMap<TripId, Vec<Service>> = HashMap::new();
+        let mut cancellations: HashMap<TripId, Vec<Service>> = HashMap::new();
+
+        for schedule in self.timetable.schedules.iter() {
+            let trip_id = self.schedule_to_trip_id[&schedule.id];
+            let service = Service::new(schedule.start_date, schedule.end_date, schedule.days_run);
+            match schedule.trip_type {
+                crate::cif::mca::ScheduleType::Cancellation => {
+                    cancellations.entry(trip_id).or_default().push(service)
+                }
+                _ => {
+                    services.entry(trip_id).or_default().push(service);
+                }
+            }
+        }
+
+        Ok(Calendar::new(services, cancellations))
+    }
+
+    fn connections(&self) -> Result<Vec<Connection>> {
         // trip ID can be created from schedule ID
         // stop ID must be converted from tiplocs
         // Will need a map from tiploc to stop ID,
@@ -89,8 +115,8 @@ impl<'a> CsaAdapter for CifAdapter<'a> {
         // with the tiploc_to_crs map in the timetable
         let mut connections = vec![];
 
-        for (i, schedule) in self.timetable.schedules.iter().enumerate() {
-            let trip_id = TripId::new(i);
+        for schedule in self.timetable.schedules.iter() {
+            let trip_id = self.schedule_to_trip_id[&schedule.id];
 
             let locations: Vec<_> = schedule
                 .locations
@@ -112,18 +138,12 @@ impl<'a> CsaAdapter for CifAdapter<'a> {
                     .arrival_time()
                     .expect("Should only be intermediate or destination");
 
-                let arrival_date = if arrival_time < departure_time {
-                    NaiveDateTime::new(date + TimeDelta::days(1), arrival_time)
-                } else {
-                    NaiveDateTime::new(date, arrival_time)
-                };
-
                 let connection = Connection {
                     trip_id,
                     from_stop_id: from_id,
                     to_stop_id: to_id,
-                    departure_time: NaiveDateTime::new(date, departure_time),
-                    arrival_time: arrival_date,
+                    departure_time,
+                    arrival_time,
                 };
                 connections.push(connection);
             }

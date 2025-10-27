@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeDelta};
+use chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, TimeDelta};
 use geojson::{Feature, FeatureCollection, ser::serialize_geometry};
 use kiddo::{SquaredEuclidean, float::kdtree};
 use serde::Serialize;
@@ -56,8 +56,8 @@ pub struct Connection {
     pub trip_id: TripId,
     pub from_stop_id: StopId,
     pub to_stop_id: StopId,
-    pub departure_time: NaiveDateTime,
-    pub arrival_time: NaiveDateTime,
+    pub departure_time: NaiveTime,
+    pub arrival_time: NaiveTime,
 }
 
 pub struct Transfer {
@@ -66,18 +66,89 @@ pub struct Transfer {
     pub transfer_time: TimeDelta,
 }
 
+impl Connection {
+    fn departure_date_time(&self, date: NaiveDate) -> NaiveDateTime {
+        NaiveDateTime::new(date, self.departure_time)
+    }
+
+    fn arrival_date_time(&self, date: NaiveDate) -> NaiveDateTime {
+        if self.arrival_time < self.departure_time {
+            NaiveDateTime::new(date + TimeDelta::days(1), self.arrival_time)
+        } else {
+            NaiveDateTime::new(date, self.arrival_time)
+        }
+    }
+}
+
+pub struct Calendar {
+    services: HashMap<TripId, Vec<Service>>,
+    cancellations: HashMap<TripId, Vec<Service>>,
+}
+
+impl Calendar {
+    pub fn new(
+        services: HashMap<TripId, Vec<Service>>,
+        cancellations: HashMap<TripId, Vec<Service>>,
+    ) -> Self {
+        Self {
+            services,
+            cancellations,
+        }
+    }
+
+    fn runs_on(&self, trip_id: TripId, date: NaiveDate) -> bool {
+        let service_runs = self
+            .services
+            .get(&trip_id)
+            .map(|services| services.iter().any(|s| s.runs_on(date)))
+            .unwrap_or(false);
+
+        let cancelled = self
+            .cancellations
+            .get(&trip_id)
+            .map(|c| c.iter().any(|s| s.runs_on(date)))
+            .unwrap_or(false);
+        // dbg!(service_runs, cancelled, date);
+        service_runs && !cancelled
+    }
+}
+
+#[derive(Debug)]
+pub struct Service {
+    start_date: NaiveDate,
+    end_date: NaiveDate,
+    runs_on: [bool; 7],
+}
+
+impl Service {
+    pub fn new(start_date: NaiveDate, end_date: NaiveDate, runs_on: [bool; 7]) -> Self {
+        Self {
+            start_date,
+            end_date,
+            runs_on,
+        }
+    }
+
+    fn runs_on(&self, date: NaiveDate) -> bool {
+        let in_range = self.start_date <= date && self.end_date >= date;
+        let valid_weekday = self.runs_on[date.weekday().days_since(chrono::Weekday::Mon) as usize];
+
+        in_range && valid_weekday
+    }
+}
+
 pub struct TransportNetwork {
     tree: kdtree::KdTree<f64, usize, 3, 32, u32>,
     stops: HashMap<StopId, Stop>,
     connections: Vec<Connection>,
     transfers: HashMap<StopId, Vec<Transfer>>,
-    date: NaiveDate,
+    calendar: Calendar,
 }
 
 impl TransportNetwork {
-    pub fn from_adapter<A: CsaAdapter>(adapter: &A, date: NaiveDate) -> Result<Self, A::Error> {
+    pub fn from_adapter<A: CsaAdapter>(adapter: &A) -> Result<Self, A::Error> {
         let stops = adapter.stops()?;
-        let mut connections = adapter.connections(date)?;
+        let mut connections = adapter.connections()?;
         connections.sort_unstable_by_key(|c| c.departure_time);
 
         let mut tree: kdtree::KdTree<f64, usize, 3, 32, u32> = kdtree::KdTree::new();
@@ -85,22 +156,30 @@ impl TransportNetwork {
             tree.add(&to_unit(s.lat, s.lon), id.0);
         });
         let transfers = adapter.transfers()?;
+        let calendar = adapter.calendar()?;
 
         Ok(Self {
             tree,
             stops,
             connections,
             transfers,
-            date,
+            calendar,
         })
     }
 
-    pub fn query_lat_lon(&self, lat: f64, lon: f64, departure_time: NaiveTime) -> Vec<ArrivalTime> {
-        let departure_time = NaiveDateTime::new(self.date, departure_time);
+    pub fn query_lat_lon(
+        &self,
+        lat: f64,
+        lon: f64,
+        date: NaiveDate,
+        departure_time: NaiveTime,
+    ) -> Vec<ArrivalTime> {
+        let departure_date_time = NaiveDateTime::new(date, departure_time);
         let mut csa = CsaState::new();
 
         for (stop_id, distance) in self.stops_within_radius(lat, lon, 500.0) {
-            let time = departure_time + TimeDelta::seconds((distance / WALKING_SPEED_M_S) as i64);
+            let time =
+                departure_date_time + TimeDelta::seconds((distance / WALKING_SPEED_M_S) as i64);
             csa.update_arrival(stop_id, time);
 
             for transfer in self.get_transfers(stop_id) {
@@ -111,8 +190,12 @@ impl TransportNetwork {
         }
 
         for c in self.connections_after(departure_time) {
+            if !self.calendar.runs_on(c.trip_id, date) {
+                continue;
+            }
+
             let already_boarded = csa.has_boarded(c.trip_id);
-            let can_board = csa.can_board(c.from_stop_id, c.departure_time);
+            let can_board = csa.can_board(c.from_stop_id, c.departure_date_time(date));
 
             if !already_boarded && !can_board {
                 continue;
@@ -120,11 +203,11 @@ impl TransportNetwork {
 
             csa.board_trip(c.trip_id.clone());
 
-            if csa.should_update_arrival(c.to_stop_id, c.arrival_time) {
-                csa.update_arrival(c.to_stop_id.clone(), c.arrival_time);
+            if csa.should_update_arrival(c.to_stop_id, c.arrival_date_time(date)) {
+                csa.update_arrival(c.to_stop_id.clone(), c.arrival_date_time(date));
 
                 for transfer in self.get_transfers(c.to_stop_id) {
-                    let new_arrival = c.arrival_time + transfer.transfer_time;
+                    let new_arrival = c.arrival_date_time(date) + transfer.transfer_time;
                     let earlier_arrival =
                         csa.should_update_arrival(transfer.to_stop_id, new_arrival);
 
@@ -160,7 +243,7 @@ impl TransportNetwork {
 
     pub fn connections_after(
         &self,
-        departure_time: NaiveDateTime,
+        departure_time: NaiveTime,
     ) -> impl Iterator<Item = &Connection> {
         let first_connection = self
             .connections

@@ -20,6 +20,7 @@ enum Commands {
         lat: f64,
         #[arg(allow_hyphen_values = true)]
         lon: f64,
+        date: NaiveDate,
         time: NaiveTime,
     },
 }
@@ -35,13 +36,17 @@ fn main() -> anyhow::Result<()> {
     let now = std::time::Instant::now();
     eprintln!("Adapting to transport network");
     let adapter = CifAdapter::new(&timetable);
-    let date = NaiveDate::from_ymd_opt(2025, 10, 24).unwrap();
-    let network = TransportNetwork::from_adapter(&adapter, date)?;
+    let network = TransportNetwork::from_adapter(&adapter)?;
     eprintln!("Done in {:?}", now.elapsed());
 
-    let Commands::Query { lat, lon, time } = args.command;
+    let Commands::Query {
+        lat,
+        lon,
+        date,
+        time,
+    } = args.command;
 
-    let arrival_times = network.query_lat_lon(lat, lon, time);
+    let arrival_times = network.query_lat_lon(lat, lon, date, time);
     let geojson = to_feature_collection(&arrival_times)?;
     println!("{}", geojson.to_string());
 

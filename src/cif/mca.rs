@@ -7,7 +7,7 @@ use std::{
 use anyhow::Result;
 use chrono::{NaiveDate, NaiveTime};
 
-use crate::cif::{parse_date_ddmmyy, parse_hhmm};
+use crate::cif::{parse_date_yymmdd, parse_hhmm};
 
 #[allow(unused)]
 pub struct Mca {
@@ -26,8 +26,8 @@ pub fn parse_mca<R: Read>(reader: R) -> Result<Vec<Schedule>> {
         match &line[0..2] {
             "BS" => {
                 let trip_id = line[3..9].to_owned();
-                let start_date = parse_date_ddmmyy(&line[9..15])?;
-                let end_date = parse_date_ddmmyy(&line[15..21])?;
+                let start_date = parse_date_yymmdd(&line[9..15])?;
+                let end_date = parse_date_yymmdd(&line[15..21])?;
                 let trip_type = match line.chars().last() {
                     Some('P') => ScheduleType::Permanent,
                     Some('O') => ScheduleType::Overlay,
