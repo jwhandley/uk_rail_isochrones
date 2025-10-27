@@ -1,11 +1,5 @@
-pub mod cif;
-
+use crate::csa::{Connection, Stop, StopId, Transfer};
 use std::collections::HashMap;
-
-use crate::csa::{
-    StopId,
-    transport_network::{Connection, Stop, Transfer},
-};
 
 pub trait CsaAdapter {
     type Error;

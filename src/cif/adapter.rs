@@ -7,10 +7,7 @@ use std::collections::HashMap;
 use crate::{
     adapters::CsaAdapter,
     cif::CifTimetable,
-    csa::{
-        StopId, TripId,
-        transport_network::{Connection, Stop, Transfer},
-    },
+    csa::{Connection, Stop, StopId, Transfer, TripId},
 };
 
 #[derive(Deserialize, Clone)]

@@ -3,15 +3,14 @@ use chrono::{NaiveDate, NaiveTime};
 use std::{fs::File, path::Path};
 use zip::ZipArchive;
 
-use crate::cif::{
-    alf::{Link, parse_alf},
-    mca::{Schedule, parse_mca},
-    msn::{Msn, Station},
-};
+pub mod adapter;
+mod alf;
+mod mca;
+mod msn;
 
-pub mod alf;
-pub mod mca;
-pub mod msn;
+use alf::{Link, parse_alf};
+use mca::{Schedule, parse_mca};
+use msn::{Msn, Station};
 
 pub fn parse_hhmm(s: &str) -> Result<NaiveTime> {
     NaiveTime::parse_from_str(s, "%H%M").with_context(|| format!("bad time (HHMM): {s}"))
@@ -22,7 +21,7 @@ pub fn parse_date_ddmmyy(s: &str) -> Result<NaiveDate> {
     let mon: u32 = s[2..4].parse().context("Invalid month")?;
     let yy: i32 = s[4..6].parse().context("Invalid year")?;
     let year = 2000 + yy;
-    NaiveDate::from_ymd_opt(year, mon, day).ok_or_else(|| anyhow::anyhow!("invalid ddmmyy {s}"))
+    NaiveDate::from_ymd_opt(year, mon, day).with_context(|| format!("invalid ddmmyy {s}"))
 }
 
 pub struct CifTimetable {
