@@ -1,15 +1,3 @@
-mod adapters;
-mod cif;
-mod csa;
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-};
-
-use crate::{
-    cif::CifTimetable,
-    csa::{TransportNetwork, to_feature_collection},
-};
 use axum::{
     Json, Router,
     extract::{Query, State},
@@ -20,7 +8,19 @@ use chrono::{NaiveDate, NaiveTime};
 use clap::{Parser, Subcommand};
 use geojson::FeatureCollection;
 use serde::Deserialize;
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 use tracing::info;
+
+mod adapters;
+mod cif;
+mod csa;
+use crate::{
+    cif::CifTimetable,
+    csa::{TransportNetwork, to_feature_collection},
+};
 
 #[derive(Parser)]
 struct Cli {
@@ -137,7 +137,12 @@ async fn isochrone(
         time,
     } = params;
 
-    let features = run_query(&network, lat, lon, date, time);
+    let now = std::time::Instant::now();
+    info!("Querying network for arrival times starting from ({lat}, {lon}) on {date} at {time}");
+    let arrival_times = network.query_lat_lon(lat, lon, date, time);
+    let features = to_feature_collection(&arrival_times);
+    info!("Done in {:?}", now.elapsed());
+
     features
         .map(|f| Json(f))
         .map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)
