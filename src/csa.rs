@@ -1,17 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
-use chrono::{NaiveDate, NaiveDateTime, TimeDelta};
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeDelta};
 use geojson::{Feature, FeatureCollection, ser::serialize_geometry};
 use kiddo::{SquaredEuclidean, float::kdtree};
 use serde::Serialize;
 
-use crate::{
-    adapters::CsaAdapter,
-    cif::{
-        CifTimetable,
-        adapter::{CifAdapter, StationInfo},
-    },
-};
+use crate::adapters::CsaAdapter;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, PartialOrd, Ord)]
 pub struct StopId(usize);
@@ -77,25 +71,13 @@ pub struct TransportNetwork {
     stops: HashMap<StopId, Stop>,
     connections: Vec<Connection>,
     transfers: HashMap<StopId, Vec<Transfer>>,
+    date: NaiveDate,
 }
 
 impl TransportNetwork {
-    pub fn from_cif(timetable: &CifTimetable, date: NaiveDate) -> anyhow::Result<Self> {
-        let station_str = include_str!("../uk-railway-stations/stations.json");
-        let station_info: Vec<StationInfo> = serde_json::from_str(station_str)?;
-        let station_info = station_info
-            .into_iter()
-            .map(|s| (s.crs.clone(), s))
-            .collect();
-
-        let adapter = CifAdapter::new(timetable, date, station_info);
-
-        Self::from_adapter(&adapter)
-    }
-
-    pub fn from_adapter<A: CsaAdapter>(adapter: &A) -> Result<Self, A::Error> {
+    pub fn from_adapter<A: CsaAdapter>(adapter: &A, date: NaiveDate) -> Result<Self, A::Error> {
         let stops = adapter.stops()?;
-        let mut connections = adapter.connections()?;
+        let mut connections = adapter.connections(date)?;
         connections.sort_unstable_by_key(|c| c.departure_time);
 
         let mut tree: kdtree::KdTree<f64, usize, 3, 32, u32> = kdtree::KdTree::new();
@@ -109,15 +91,12 @@ impl TransportNetwork {
             stops,
             connections,
             transfers,
+            date,
         })
     }
 
-    pub fn query_lat_lon(
-        &self,
-        lat: f64,
-        lon: f64,
-        departure_time: NaiveDateTime,
-    ) -> Vec<ArrivalTime> {
+    pub fn query_lat_lon(&self, lat: f64, lon: f64, departure_time: NaiveTime) -> Vec<ArrivalTime> {
+        let departure_time = NaiveDateTime::new(self.date, departure_time);
         let mut csa = CsaState::new();
 
         for (stop_id, distance) in self.stops_within_radius(lat, lon, 500.0) {

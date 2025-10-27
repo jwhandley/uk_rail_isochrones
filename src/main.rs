@@ -2,10 +2,10 @@ mod adapters;
 mod cif;
 mod csa;
 use crate::{
-    cif::CifTimetable,
+    cif::{CifTimetable, adapter::CifAdapter},
     csa::{TransportNetwork, to_feature_collection},
 };
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
+use chrono::{NaiveDate, NaiveTime};
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
@@ -34,13 +34,14 @@ fn main() -> anyhow::Result<()> {
 
     let now = std::time::Instant::now();
     eprintln!("Adapting to transport network");
+    let adapter = CifAdapter::new(&timetable);
     let date = NaiveDate::from_ymd_opt(2025, 10, 24).unwrap();
-    let network = TransportNetwork::from_cif(&timetable, date)?;
+    let network = TransportNetwork::from_adapter(&adapter, date)?;
     eprintln!("Done in {:?}", now.elapsed());
 
     let Commands::Query { lat, lon, time } = args.command;
-    let departure_time = NaiveDateTime::new(date, time);
-    let arrival_times = network.query_lat_lon(lat, lon, departure_time);
+
+    let arrival_times = network.query_lat_lon(lat, lon, time);
     let geojson = to_feature_collection(&arrival_times)?;
     println!("{}", geojson.to_string());
 

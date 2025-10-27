@@ -26,15 +26,18 @@ pub struct CifAdapter<'a> {
     crs_to_stop_id: HashMap<String, StopId>,
     tiploc_to_stop_id: HashMap<String, StopId>,
     stops: HashMap<StopId, Stop>,
-    date: NaiveDate,
 }
 
 impl<'a> CifAdapter<'a> {
-    pub fn new(
-        timetable: &'a CifTimetable,
-        date: NaiveDate,
-        station_info: HashMap<String, StationInfo>,
-    ) -> Self {
+    pub fn new(timetable: &'a CifTimetable) -> Self {
+        let station_str = include_str!("../../uk-railway-stations/stations.json");
+        let station_info: Vec<StationInfo> =
+            serde_json::from_str(station_str).expect("stations.json to be in the expected format");
+        let station_info: HashMap<String, StationInfo> = station_info
+            .into_iter()
+            .map(|s| (s.crs.clone(), s))
+            .collect();
+
         // TODO: handle dates properly
         let mut crs_to_stop_id = HashMap::new();
         let mut tiploc_to_stop_id = HashMap::new();
@@ -64,7 +67,6 @@ impl<'a> CifAdapter<'a> {
 
         Self {
             timetable,
-            date,
             crs_to_stop_id,
             tiploc_to_stop_id,
             stops,
@@ -79,7 +81,7 @@ impl<'a> CsaAdapter for CifAdapter<'a> {
         Ok(self.stops.clone())
     }
 
-    fn connections(&self) -> Result<Vec<Connection>> {
+    fn connections(&self, date: NaiveDate) -> Result<Vec<Connection>> {
         // trip ID can be created from schedule ID
         // stop ID must be converted from tiplocs
         // Will need a map from tiploc to stop ID,
@@ -111,16 +113,16 @@ impl<'a> CsaAdapter for CifAdapter<'a> {
                     .expect("Should only be intermediate or destination");
 
                 let arrival_date = if arrival_time < departure_time {
-                    NaiveDateTime::new(self.date + TimeDelta::days(1), arrival_time)
+                    NaiveDateTime::new(date + TimeDelta::days(1), arrival_time)
                 } else {
-                    NaiveDateTime::new(self.date, arrival_time)
+                    NaiveDateTime::new(date, arrival_time)
                 };
 
                 let connection = Connection {
                     trip_id,
                     from_stop_id: from_id,
                     to_stop_id: to_id,
-                    departure_time: NaiveDateTime::new(self.date, departure_time),
+                    departure_time: NaiveDateTime::new(date, departure_time),
                     arrival_time: arrival_date,
                 };
                 connections.push(connection);
