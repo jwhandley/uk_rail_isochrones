@@ -11,6 +11,8 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 # Build application
 COPY . .
+RUN --mount=type=bind,source=.git,target=/app/.git,ro \
+    git submodule update --init --recursive
 RUN cargo build --release --bin uk_rail_isochrones
 
 # We do not need the Rust toolchain to run the binary!
