@@ -1668,6 +1668,7 @@ dependencies = [
  "axum",
  "chrono",
  "clap",
+ "flate2",
  "geo-types",
  "geojson",
  "itertools",

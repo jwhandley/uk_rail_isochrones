@@ -78,8 +78,10 @@ async fn main() {
             println!("{}", geojson.to_string());
         }
         Commands::Serve { network_path } => {
+            let now = std::time::Instant::now();
             info!("Loading network from file");
             let network = TransportNetwork::load(network_path).expect("Failed to load network");
+            info!("Done in {:?}", now.elapsed());
             let network = Arc::from(network);
 
             let app = Router::new()

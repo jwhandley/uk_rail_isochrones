@@ -1,9 +1,12 @@
+use std::fs::File;
+use std::io::{BufReader, prelude::*};
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
 };
 
 use chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, TimeDelta};
+use flate2::{Compression, bufread::ZlibDecoder, write::ZlibEncoder};
 use geojson::{Feature, FeatureCollection, ser::serialize_geometry};
 use kiddo::{KdTree, SquaredEuclidean};
 use serde::{Deserialize, Serialize};
@@ -153,12 +156,20 @@ pub struct TransportNetwork {
 
 impl TransportNetwork {
     pub fn load<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
-        let bytes = std::fs::read(path)?;
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+        let mut d = ZlibDecoder::new(reader);
+        let mut bytes = vec![];
+        d.read_to_end(&mut bytes)?;
+
         Ok(postcard::from_bytes(&bytes)?)
     }
 
     pub fn save<P: AsRef<Path>>(&self, path: P) -> anyhow::Result<()> {
         let bytes = postcard::to_stdvec(self)?;
+        let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
+        e.write_all(&bytes)?;
+        let bytes = e.finish()?;
         std::fs::write(path, &bytes)?;
         Ok(())
     }
