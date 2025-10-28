@@ -60,7 +60,7 @@ impl<'a> CifAdapter<'a> {
             let stop = Stop::new(name, lat, lon);
 
             stops.insert(id, stop);
-            tiploc_to_stop_id.insert(tiploc, id.clone());
+            tiploc_to_stop_id.insert(tiploc, id);
             crs_to_stop_id.insert(crs, id);
         }
 

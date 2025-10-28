@@ -230,10 +230,10 @@ impl TransportNetwork {
                 continue;
             }
 
-            csa.board_trip(c.trip_id.clone());
+            csa.board_trip(c.trip_id);
 
             if csa.should_update_arrival(c.to_stop_id, c.arrival_date_time(date)) {
-                csa.update_arrival(c.to_stop_id.clone(), c.arrival_date_time(date));
+                csa.update_arrival(c.to_stop_id, c.arrival_date_time(date));
 
                 for transfer in self.get_transfers(c.to_stop_id) {
                     let new_arrival = c.arrival_date_time(date) + transfer.transfer_time;
@@ -241,7 +241,7 @@ impl TransportNetwork {
                         csa.should_update_arrival(transfer.to_stop_id, new_arrival);
 
                     if earlier_arrival {
-                        csa.update_arrival(transfer.to_stop_id.clone(), new_arrival);
+                        csa.update_arrival(transfer.to_stop_id, new_arrival);
                     }
                 }
             }
@@ -320,8 +320,8 @@ fn meters_to_chord2(d_m: f64) -> f64 {
 
 pub fn to_feature_collection(arrival_times: &[ArrivalTime]) -> anyhow::Result<FeatureCollection> {
     let features = arrival_times
-        .into_iter()
-        .map(|t| geojson::ser::to_feature(t))
+        .iter()
+        .map(geojson::ser::to_feature)
         .collect::<Result<Vec<Feature>, geojson::Error>>()?;
 
     Ok(FeatureCollection {

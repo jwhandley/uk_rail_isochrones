@@ -75,7 +75,7 @@ async fn main() {
             let network = TransportNetwork::load(network_path).expect("Failed to load network");
             let geojson =
                 run_query(&network, lat, lon, date, time).expect("Failed to execute query");
-            println!("{}", geojson.to_string());
+            println!("{geojson}");
         }
         Commands::Serve { network_path } => {
             let now = std::time::Instant::now();
@@ -157,7 +157,7 @@ async fn isochrone(
     info!("Done in {:?}", now.elapsed());
 
     features
-        .map(|f| Json(f))
+        .map(Json)
         .map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
