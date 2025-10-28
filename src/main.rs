@@ -98,7 +98,7 @@ async fn main() {
                 )
                 .with_state(network);
 
-            let listener = tokio::net::TcpListener::bind("0.0.0.0:10000")
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:8080")
                 .await
                 .unwrap();
 
